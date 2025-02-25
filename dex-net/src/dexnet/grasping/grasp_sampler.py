@@ -5,6 +5,7 @@ import logging
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+
 # import os, IPython, sys
 import random
 import time
@@ -14,6 +15,7 @@ import open3d as o3d
 from dexnet.grasping import Grasp, Contact3D, ParallelJawPtGrasp3D, PointGraspMetrics3D, GraspableObject3D
 from autolab_core import RigidTransform
 import scipy
+
 # create logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -21,6 +23,7 @@ logger.setLevel(logging.INFO)
 try:
     import rospy
     import moveit_commander
+
     ROS_ENABLED = True
 except ImportError:
     ROS_ENABLED = False
@@ -58,7 +61,7 @@ Author: Jeff Mahler
 
 # class GraspSampler(metaclass=ABCMeta):
 class GraspSampler:
-    """ Base class for various methods to sample a number of grasps on an object.
+    """Base class for various methods to sample a number of grasps on an object.
     Should not be instantiated directly.
 
     Attributes
@@ -68,6 +71,7 @@ class GraspSampler:
     config : :obj:`YamlConfig`
         configuration for the grasp sampler
     """
+
     __metaclass__ = ABCMeta
 
     def __init__(self, gripper, config):
@@ -75,22 +79,22 @@ class GraspSampler:
         self._configure(config)
 
     def _configure(self, config):
-        """ Configures the grasp generator."""
-        self.friction_coef = config['sampling_friction_coef']
-        self.num_cone_faces = config['num_cone_faces']
-        self.num_samples = config['grasp_samples_per_surface_point']
-        self.target_num_grasps = config['target_num_grasps']
+        """Configures the grasp generator."""
+        self.friction_coef = config["sampling_friction_coef"]
+        self.num_cone_faces = config["num_cone_faces"]
+        self.num_samples = config["grasp_samples_per_surface_point"]
+        self.target_num_grasps = config["target_num_grasps"]
         if self.target_num_grasps is None:
-            self.target_num_grasps = config['min_num_grasps']
+            self.target_num_grasps = config["min_num_grasps"]
 
-        self.min_contact_dist = config['min_contact_dist']
-        self.num_grasp_rots = config['num_grasp_rots']
-        if 'max_num_surface_points' in list(config.keys()):
-            self.max_num_surface_points_ = config['max_num_surface_points']
+        self.min_contact_dist = config["min_contact_dist"]
+        self.num_grasp_rots = config["num_grasp_rots"]
+        if "max_num_surface_points" in list(config.keys()):
+            self.max_num_surface_points_ = config["max_num_surface_points"]
         else:
             self.max_num_surface_points_ = 100
-        if 'grasp_dist_thresh' in list(config.keys()):
-            self.grasp_dist_thresh_ = config['grasp_dist_thresh']
+        if "grasp_dist_thresh" in list(config.keys()):
+            self.grasp_dist_thresh_ = config["grasp_dist_thresh"]
         else:
             self.grasp_dist_thresh_ = 0
 
@@ -111,8 +115,9 @@ class GraspSampler:
         return grasp
         # pass
 
-    def generate_grasps_stable_poses(self, graspable, stable_poses, target_num_grasps=None, grasp_gen_mult=5,
-                                     max_iter=3, sample_approach_angles=False, vis=False, **kwargs):
+    def generate_grasps_stable_poses(
+        self, graspable, stable_poses, target_num_grasps=None, grasp_gen_mult=5, max_iter=3, sample_approach_angles=False, vis=False, **kwargs
+    ):
         """Samples a set of grasps for an object, aligning the approach angles to the object stable poses.
 
         Parameters
@@ -136,9 +141,9 @@ class GraspSampler:
             list of generated grasps
         """
         # sample dense grasps
-        unaligned_grasps = self.generate_grasps(graspable, target_num_grasps=target_num_grasps,
-                                                grasp_gen_mult=grasp_gen_mult,
-                                                max_iter=max_iter, vis=vis)
+        unaligned_grasps = self.generate_grasps(
+            graspable, target_num_grasps=target_num_grasps, grasp_gen_mult=grasp_gen_mult, max_iter=max_iter, vis=vis
+        )
 
         # align for each stable pose
         grasps = {}
@@ -150,8 +155,7 @@ class GraspSampler:
                 grasps[stable_pose.id].append(copy.deepcopy(aligned_grasp))
         return grasps
 
-    def generate_grasps(self, graspable, target_num_grasps=None, grasp_gen_mult=5, max_iter=3,
-                        sample_approach_angles=False, vis=False, **kwargs):
+    def generate_grasps(self, graspable, target_num_grasps=None, grasp_gen_mult=5, max_iter=3, sample_approach_angles=False, vis=False, **kwargs):
         """Samples a set of grasps for an object.
 
         Parameters
@@ -217,8 +221,7 @@ class GraspSampler:
 
             # add to the current grasp set
             grasps += candidate_grasps
-            logger.info('%d/%d grasps found after iteration %d.',
-                        len(grasps), target_num_grasps, k)
+            logger.info("%d/%d grasps found after iteration %d.", len(grasps), target_num_grasps, k)
 
             grasp_gen_mult *= 2
             num_grasps_remaining = target_num_grasps - len(grasps)
@@ -227,42 +230,42 @@ class GraspSampler:
         # shuffle computed grasps
         random.shuffle(grasps)
         if len(grasps) > target_num_grasps:
-            logger.info('Truncating %d grasps to %d.',
-                        len(grasps), target_num_grasps)
+            logger.info("Truncating %d grasps to %d.", len(grasps), target_num_grasps)
             grasps = grasps[:target_num_grasps]
-        logger.info('Found %d grasps.', len(grasps))
+        logger.info("Found %d grasps.", len(grasps))
         return grasps
 
-    def show_points(self, point, color='lb', scale_factor=.0005):
-        if color == 'b':
+    def show_points(self, point, color="lb", scale_factor=0.0005):
+        if color == "b":
             color_f = (0, 0, 1)
-        elif color == 'r':
+        elif color == "r":
             color_f = (1, 0, 0)
-        elif color == 'g':
+        elif color == "g":
             color_f = (0, 1, 0)
-        elif color == 'lb':  # light blue
+        elif color == "lb":  # light blue
             color_f = (0.22, 1, 1)
         else:
             color_f = (1, 1, 1)
         if point.size == 3:  # vis for only one point, shape must be (3,), for shape (1, 3) is not work
-            point = point.reshape(3, )
+            point = point.reshape(
+                3,
+            )
             mlab.points3d(point[0], point[1], point[2], color=color_f, scale_factor=scale_factor)
         else:  # vis for multiple points
             mlab.points3d(point[:, 0], point[:, 1], point[:, 2], color=color_f, scale_factor=scale_factor)
 
-    def show_line(self, un1, un2, color='g', scale_factor=0.0005):
-        if color == 'b':
+    def show_line(self, un1, un2, color="g", scale_factor=0.0005):
+        if color == "b":
             color_f = (0, 0, 1)
-        elif color == 'r':
+        elif color == "r":
             color_f = (1, 0, 0)
-        elif color == 'g':
+        elif color == "g":
             color_f = (0, 1, 0)
         else:
             color_f = (1, 1, 1)
         mlab.plot3d([un1[0], un2[0]], [un1[1], un2[1]], [un1[2], un2[2]], color=color_f, tube_radius=scale_factor)
 
-    def show_grasp_norm_oneside(self, grasp_bottom_center,
-                                grasp_normal, grasp_axis, minor_pc, scale_factor=0.001):
+    def show_grasp_norm_oneside(self, grasp_bottom_center, grasp_normal, grasp_axis, minor_pc, scale_factor=0.001):
 
         # un1 = grasp_bottom_center + 0.5 * grasp_axis * self.gripper.max_width
         un2 = grasp_bottom_center
@@ -270,19 +273,31 @@ class GraspSampler:
         # un4 = grasp_bottom_center
         # un5 = grasp_bottom_center + 0.5 * grasp_normal * self.gripper.max_width
         # un6 = grasp_bottom_center
-        self.show_points(grasp_bottom_center, color='g', scale_factor=scale_factor * 4)
+        self.show_points(grasp_bottom_center, color="g", scale_factor=scale_factor * 4)
         # self.show_points(un1, scale_factor=scale_factor * 4)
         # self.show_points(un3, scale_factor=scale_factor * 4)
         # self.show_points(un5, scale_factor=scale_factor * 4)
         # self.show_line(un1, un2, color='g', scale_factor=scale_factor)  # binormal/ major pc
         # self.show_line(un3, un4, color='b', scale_factor=scale_factor)  # minor pc
         # self.show_line(un5, un6, color='r', scale_factor=scale_factor)  # approach normal
-        mlab.quiver3d(un2[0], un2[1], un2[2], grasp_axis[0], grasp_axis[1], grasp_axis[2],
-                      scale_factor=.03, line_width=0.25, color=(0, 1, 0), mode='arrow')
-        mlab.quiver3d(un2[0], un2[1], un2[2], minor_pc[0], minor_pc[1], minor_pc[2],
-                      scale_factor=.03, line_width=0.1, color=(0, 0, 1), mode='arrow')
-        mlab.quiver3d(un2[0], un2[1], un2[2], grasp_normal[0], grasp_normal[1], grasp_normal[2],
-                      scale_factor=.03, line_width=0.05, color=(1, 0, 0), mode='arrow')
+        mlab.quiver3d(
+            un2[0], un2[1], un2[2], grasp_axis[0], grasp_axis[1], grasp_axis[2], scale_factor=0.03, line_width=0.25, color=(0, 1, 0), mode="arrow"
+        )
+        mlab.quiver3d(
+            un2[0], un2[1], un2[2], minor_pc[0], minor_pc[1], minor_pc[2], scale_factor=0.03, line_width=0.1, color=(0, 0, 1), mode="arrow"
+        )
+        mlab.quiver3d(
+            un2[0],
+            un2[1],
+            un2[2],
+            grasp_normal[0],
+            grasp_normal[1],
+            grasp_normal[2],
+            scale_factor=0.03,
+            line_width=0.05,
+            color=(1, 0, 0),
+            mode="arrow",
+        )
 
     def get_hand_points(self, grasp_bottom_center, approach_normal, binormal):
         hh = self.gripper.hand_height
@@ -316,25 +331,47 @@ class GraspSampler:
         p18 = -approach_normal * hh + p15
         p19 = -approach_normal * hh + p16
         p20 = -approach_normal * hh + p12
-        p = np.vstack([np.array([0, 0, 0]), p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
-                       p11, p12, p13, p14, p15, p16, p17, p18, p19, p20])
+        p = np.vstack([np.array([0, 0, 0]), p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20])
         return p
 
     def show_grasp_3d(self, hand_points, color=(0.003, 0.50196, 0.50196)):
         # for i in range(1, 21):
         #     self.show_points(p[i])
-        if color == 'd':
+        if color == "d":
             color = (0.003, 0.50196, 0.50196)
-        triangles = [(9, 1, 4), (4, 9, 10), (4, 10, 8), (8, 10, 12), (1, 4, 8), (1, 5, 8),
-                     (1, 5, 9), (5, 9, 11), (9, 10, 20), (9, 20, 17), (20, 17, 19), (17, 19, 18),
-                     (14, 19, 18), (14, 18, 13), (3, 2, 13), (3, 13, 14), (3, 6, 7), (3, 6, 2),
-                     (3, 14, 7), (14, 7, 16), (2, 13, 15), (2, 15, 6), (12, 20, 19), (12, 19, 16),
-                     (15, 11, 17), (15, 17, 18), (6, 7, 8), (6, 8, 5)]
-        mlab.triangular_mesh(hand_points[:, 0], hand_points[:, 1], hand_points[:, 2],
-                             triangles, color=color, opacity=0.5)
+        triangles = [
+            (9, 1, 4),
+            (4, 9, 10),
+            (4, 10, 8),
+            (8, 10, 12),
+            (1, 4, 8),
+            (1, 5, 8),
+            (1, 5, 9),
+            (5, 9, 11),
+            (9, 10, 20),
+            (9, 20, 17),
+            (20, 17, 19),
+            (17, 19, 18),
+            (14, 19, 18),
+            (14, 18, 13),
+            (3, 2, 13),
+            (3, 13, 14),
+            (3, 6, 7),
+            (3, 6, 2),
+            (3, 14, 7),
+            (14, 7, 16),
+            (2, 13, 15),
+            (2, 15, 6),
+            (12, 20, 19),
+            (12, 19, 16),
+            (15, 11, 17),
+            (15, 17, 18),
+            (6, 7, 8),
+            (6, 8, 5),
+        ]
+        mlab.triangular_mesh(hand_points[:, 0], hand_points[:, 1], hand_points[:, 2], triangles, color=color, opacity=0.5)
 
-    def check_collision_square(self, grasp_bottom_center, approach_normal, binormal,
-                               minor_pc, graspable, p, way, vis=False):
+    def check_collision_square(self, grasp_bottom_center, approach_normal, binormal, minor_pc, graspable, p, way, vis=False):
         approach_normal = approach_normal.reshape(1, 3)
         approach_normal = approach_normal / np.linalg.norm(approach_normal)
         binormal = binormal.reshape(1, 3)
@@ -360,7 +397,7 @@ class GraspSampler:
         elif way == "p_bottom":
             s1, s2, s4, s8 = p[11], p[15], p[12], p[20]
         else:
-            raise ValueError('No way!')
+            raise ValueError("No way!")
         a1 = s1[1] < points_g[:, 1]
         a2 = s2[1] > points_g[:, 1]
         a3 = s1[2] > points_g[:, 2]
@@ -382,7 +419,7 @@ class GraspSampler:
             self.show_grasp_3d(p)
             self.show_points(points_g)
             if len(points_in_area) != 0:
-                self.show_points(points_g[points_in_area], color='r')
+                self.show_points(points_g[points_in_area], color="r")
             mlab.show()
         # print("points_in_area", way, len(points_in_area))
         return has_p, points_in_area
@@ -399,25 +436,21 @@ class GraspSampler:
         # mlab.show()
 
     def check_collide(self, grasp_bottom_center, approach_normal, binormal, minor_pc, graspable, hand_points):
-        bottom_points = self.check_collision_square(grasp_bottom_center, approach_normal,
-                                                    binormal, minor_pc, graspable, hand_points, "p_bottom")
+        bottom_points = self.check_collision_square(grasp_bottom_center, approach_normal, binormal, minor_pc, graspable, hand_points, "p_bottom")
         if bottom_points[0]:
             return True
 
-        left_points = self.check_collision_square(grasp_bottom_center, approach_normal,
-                                                  binormal, minor_pc, graspable, hand_points, "p_left")
+        left_points = self.check_collision_square(grasp_bottom_center, approach_normal, binormal, minor_pc, graspable, hand_points, "p_left")
         if left_points[0]:
             return True
 
-        right_points = self.check_collision_square(grasp_bottom_center, approach_normal,
-                                                   binormal, minor_pc, graspable, hand_points, "p_right")
+        right_points = self.check_collision_square(grasp_bottom_center, approach_normal, binormal, minor_pc, graspable, hand_points, "p_right")
         if right_points[0]:
             return True
 
         return False
 
-    def cal_surface_property(self, graspable, selected_surface, r_ball,
-                             point_amount, max_trial, vis=False):
+    def cal_surface_property(self, graspable, selected_surface, r_ball, point_amount, max_trial, vis=False):
         tmp_count = 0
         M = np.zeros((3, 3))
         trial = 0
@@ -457,8 +490,7 @@ class GraspSampler:
 
 
 class UniformGraspSampler(GraspSampler):
-    """ Sample grasps by sampling pairs of points on the object surface uniformly at random.
-    """
+    """Sample grasps by sampling pairs of points on the object surface uniformly at random."""
 
     def sample_grasps(self, graspable, num_grasps, vis=False, max_num_samples=1000, **kwargs):
         """
@@ -496,11 +528,9 @@ class UniformGraspSampler(GraspSampler):
                 # compute centers and axes
                 grasp_center = ParallelJawPtGrasp3D.center_from_endpoints(c0, c1)
                 grasp_axis = ParallelJawPtGrasp3D.axis_from_endpoints(c0, c1)
-                g = ParallelJawPtGrasp3D(ParallelJawPtGrasp3D.configuration_from_params(grasp_center,
-                                                                                        grasp_axis,
-                                                                                        self.gripper.max_width))
+                g = ParallelJawPtGrasp3D(ParallelJawPtGrasp3D.configuration_from_params(grasp_center, grasp_axis, self.gripper.max_width))
                 # keep grasps if the fingers close
-                if 'random_approach_angle' in kwargs and kwargs['random_approach_angle']:
+                if "random_approach_angle" in kwargs and kwargs["random_approach_angle"]:
                     angle_candidates = np.arange(-90, 120, 30)
                     np.random.shuffle(angle_candidates)
                     for grasp_angle in angle_candidates:
@@ -523,7 +553,7 @@ class UniformGraspSampler(GraspSampler):
 
 
 class GaussianGraspSampler(GraspSampler):
-    """ Sample grasps by sampling a center from a gaussian with mean at the object center of mass
+    """Sample grasps by sampling a center from a gaussian with mean at the object center of mass
     and grasp axis by sampling the spherical angles uniformly at random.
     """
 
@@ -546,7 +576,7 @@ class GaussianGraspSampler(GraspSampler):
         Returns
         -------
         :obj:`list` of obj:`ParallelJawPtGrasp3D`
-           list of generated grasps
+            list of generated grasps
         """
         # get object principal axes
         center_of_mass = graspable.mesh.center_of_mass
@@ -554,8 +584,7 @@ class GaussianGraspSampler(GraspSampler):
         sigma_dims = principal_dims / (2 * sigma_scale)
 
         # sample centers
-        grasp_centers = stats.multivariate_normal.rvs(
-            mean=center_of_mass, cov=sigma_dims ** 2, size=num_grasps)
+        grasp_centers = stats.multivariate_normal.rvs(mean=center_of_mass, cov=sigma_dims**2, size=num_grasps)
 
         # samples angles uniformly from sphere
         u = stats.uniform.rvs(size=num_grasps)
@@ -569,10 +598,10 @@ class GaussianGraspSampler(GraspSampler):
         grasps = []
         for i in range(num_grasps):
             grasp = ParallelJawPtGrasp3D(
-                ParallelJawPtGrasp3D.configuration_from_params(grasp_centers[i, :], grasp_dirs[i, :],
-                                                               self.gripper.max_width))
+                ParallelJawPtGrasp3D.configuration_from_params(grasp_centers[i, :], grasp_dirs[i, :], self.gripper.max_width)
+            )
 
-            if 'random_approach_angle' in kwargs and kwargs['random_approach_angle']:
+            if "random_approach_angle" in kwargs and kwargs["random_approach_angle"]:
                 angle_candidates = np.arange(-90, 120, 30)
                 np.random.shuffle(angle_candidates)
                 for grasp_angle in angle_candidates:
@@ -606,10 +635,10 @@ class GaussianGraspSampler(GraspSampler):
             com_grid = graspable.sdf.transform_pt_obj_to_grid(center_of_mass)
 
             plt.clf()
-            ax = plt.gca(projection='3d')
+            ax = plt.gca(projection="3d")
             # graspable.sdf.scatter()
-            ax.scatter(grasp_centers_grid[:, 0], grasp_centers_grid[:, 1], grasp_centers_grid[:, 2], s=60, c='m')
-            ax.scatter(com_grid[0], com_grid[1], com_grid[2], s=120, c='y')
+            ax.scatter(grasp_centers_grid[:, 0], grasp_centers_grid[:, 1], grasp_centers_grid[:, 2], s=60, c="m")
+            ax.scatter(com_grid[0], com_grid[1], com_grid[2], s=120, c="y")
             ax.set_xlim3d(0, graspable.sdf.dims_[0])
             ax.set_ylim3d(0, graspable.sdf.dims_[1])
             ax.set_zlim3d(0, graspable.sdf.dims_[2])
@@ -619,7 +648,7 @@ class GaussianGraspSampler(GraspSampler):
 
 
 class AntipodalGraspSampler(GraspSampler):
-    """ Samples antipodal pairs using rejection sampling.
+    """Samples antipodal pairs using rejection sampling.
     The proposal sampling ditribution is to choose a random point on
     the object surface, then sample random directions within the friction cone,
     then form a grasp axis along the direction,
@@ -627,7 +656,7 @@ class AntipodalGraspSampler(GraspSampler):
     """
 
     def sample_from_cone(self, n, tx, ty, num_samples=1):
-        """ Samples directoins from within the friction cone using uniform sampling.
+        """Samples directoins from within the friction cone using uniform sampling.
 
         Parameters
         ----------
@@ -644,7 +673,7 @@ class AntipodalGraspSampler(GraspSampler):
         -------
         v_samples : :obj:`list` of 3x1 :obj:`numpy.ndarray`
             sampled directions in the friction cone
-       """
+        """
         v_samples = []
         for i in range(num_samples):
             theta = 2 * np.pi * np.random.rand()
@@ -682,7 +711,7 @@ class AntipodalGraspSampler(GraspSampler):
         return alpha <= np.arctan(self.friction_coef), alpha
 
     def perturb_point(self, x, scale):
-        """ Uniform random perturbations to a point """
+        """Uniform random perturbations to a point"""
         x_samp = x + (scale / 2.0) * (np.random.rand(3) - 0.5)
         return x_samp
 
@@ -707,12 +736,12 @@ class AntipodalGraspSampler(GraspSampler):
         grasps = []
         surface_points, _ = graspable.sdf.surface_points(grid_basis=False)
         np.random.shuffle(surface_points)
-        shuffled_surface_points = surface_points[:min(self.max_num_surface_points_, len(surface_points))]
-        logger.info('Num surface: %d' % (len(surface_points)))
+        shuffled_surface_points = surface_points[: min(self.max_num_surface_points_, len(surface_points))]
+        logger.info("Num surface: %d" % (len(surface_points)))
 
         for k, x_surf in enumerate(shuffled_surface_points):
             # print("k:", k, "len(grasps):", len(grasps))
-            start_time = time.clock()
+            start_time = time.perf_counter()
 
             # perturb grasp for num samples
             for i in range(self.num_samples):
@@ -725,11 +754,11 @@ class AntipodalGraspSampler(GraspSampler):
                 cone_succeeded, cone1, n1 = c1.friction_cone(self.num_cone_faces, self.friction_coef)
                 if not cone_succeeded:
                     continue
-                cone_time = time.clock()
+                cone_time = time.perf_counter()
 
                 # sample grasp axes from friction cone
                 v_samples = self.sample_from_cone(n1, tx1, ty1, num_samples=1)
-                sample_time = time.clock()
+                sample_time = time.perf_counter()
 
                 for v in v_samples:
                     if vis:
@@ -740,8 +769,7 @@ class AntipodalGraspSampler(GraspSampler):
                         plt.ion()
                         ax = plt.gca(projection=Axes3D)
                         for j in range(cone1.shape[1]):
-                            ax.scatter(x1_grid[0] - cone1_grid[0], x1_grid[1] - cone1_grid[1],
-                                       x1_grid[2] - cone1_grid[2], s=50, c='m')
+                            ax.scatter(x1_grid[0] - cone1_grid[0], x1_grid[1] - cone1_grid[1], x1_grid[2] - cone1_grid[2], s=50, c="m")
 
                     # random axis flips since we don't have guarantees on surface normal directoins
                     if random.random() > 0.5:
@@ -749,12 +777,12 @@ class AntipodalGraspSampler(GraspSampler):
 
                     # start searching for contacts
                     grasp, c1, c2 = ParallelJawPtGrasp3D.grasp_from_contact_and_axis_on_grid(
-                        graspable, x1, v, self.gripper.max_width,
-                        min_grasp_width_world=self.gripper.min_width, vis=vis)
+                        graspable, x1, v, self.gripper.max_width, min_grasp_width_world=self.gripper.min_width, vis=vis
+                    )
                     if grasp is None or c2 is None:
                         continue
 
-                    if 'random_approach_angle' in kwargs and kwargs['random_approach_angle']:
+                    if "random_approach_angle" in kwargs and kwargs["random_approach_angle"]:
                         angle_candidates = np.arange(-90, 120, 30)
                         np.random.shuffle(angle_candidates)
                         for grasp_angle in angle_candidates:
@@ -786,9 +814,9 @@ class AntipodalGraspSampler(GraspSampler):
 
                     if vis:
                         plt.figure()
-                        ax = plt.gca(projection='3d')
-                        c1_proxy = c1.plot_friction_cone(color='m')
-                        c2_proxy = c2.plot_friction_cone(color='y')
+                        ax = plt.gca(projection="3d")
+                        c1_proxy = c1.plot_friction_cone(color="m")
+                        c2_proxy = c2.plot_friction_cone(color="y")
                         ax.view_init(elev=5.0, azim=0)
                         plt.show(block=False)
                         time.sleep(0.5)
@@ -825,18 +853,18 @@ class GpgGraspSampler(GraspSampler):
         Returns
         -------
         :obj:`list` of :obj:`ParallelJawPtGrasp3D`
-           list of generated grasps
+            list of generated grasps
         """
         params = {
-            'num_rball_points': 27,  # FIXME: the same as meshpy..surface_normal()
-            'num_dy': 10,  # number
-            'dtheta': 10,  # unit degree
-            'range_dtheta': 90,
-            'debug_vis': False,
-            'r_ball': self.gripper.hand_height,
-            'approach_step': 0.005,
-            'max_trail_for_r_ball': 3000,
-            'voxel_grid_ratio': 5,  # voxel_grid/sdf.resolution
+            "num_rball_points": 27,  # FIXME: the same as meshpy..surface_normal()
+            "num_dy": 10,  # number
+            "dtheta": 10,  # unit degree
+            "range_dtheta": 90,
+            "debug_vis": False,
+            "r_ball": self.gripper.hand_height,
+            "approach_step": 0.005,
+            "max_trail_for_r_ball": 3000,
+            "voxel_grid_ratio": 5,  # voxel_grid/sdf.resolution
         }
 
         # get all surface points
@@ -862,12 +890,11 @@ class GpgGraspSampler(GraspSampler):
 
             # cal major principal curvature
             # r_ball = max(self.gripper.hand_depth, self.gripper.hand_outer_diameter)
-            r_ball = params['r_ball']  # FIXME: for some relative small obj, we need to use pre-defined radius
-            point_amount = params['num_rball_points']
-            max_trial = params['max_trail_for_r_ball']
+            r_ball = params["r_ball"]  # FIXME: for some relative small obj, we need to use pre-defined radius
+            point_amount = params["num_rball_points"]
+            max_trial = params["max_trail_for_r_ball"]
             # TODO: we can not directly sample from point clouds so we use a relatively small radius.
-            ret = self.cal_surface_property(graspable, selected_surface, r_ball,
-                                            point_amount, max_trial, vis=params['debug_vis'])
+            ret = self.cal_surface_property(graspable, selected_surface, r_ball, point_amount, max_trial, vis=params["debug_vis"])
             if ret is None:
                 continue
             else:
@@ -879,89 +906,81 @@ class GpgGraspSampler(GraspSampler):
                 new_normal = -new_normal
                 minor_pc = -minor_pc
 
-            for normal_dir in [1.]:  # FIXME: here we can now know the direction of norm, outward
-                if params['debug_vis']:
+            for normal_dir in [1.0]:  # FIXME: here we can now know the direction of norm, outward
+                if params["debug_vis"]:
                     # example of show grasp frame
-                    self.show_grasp_norm_oneside(selected_surface, new_normal * normal_dir, major_pc * normal_dir,
-                                                 minor_pc, scale_factor=0.001)
-                    self.show_points(selected_surface, color='g', scale_factor=.002)
+                    self.show_grasp_norm_oneside(selected_surface, new_normal * normal_dir, major_pc * normal_dir, minor_pc, scale_factor=0.001)
+                    self.show_points(selected_surface, color="g", scale_factor=0.002)
                     # self.show_points(all_points)
 
                 # some magic number referred from origin paper
                 potential_grasp = []
-                for dtheta in np.arange(-params['range_dtheta'],
-                                        params['range_dtheta'] + 1,
-                                        params['dtheta']):
+                for dtheta in np.arange(-params["range_dtheta"], params["range_dtheta"] + 1, params["dtheta"]):
                     dy_potentials = []
                     x, y, z = minor_pc
                     rotation = RigidTransform.rotation_from_quaternion(np.array([dtheta / 180 * np.pi, x, y, z]))
-                    for dy in np.arange(-params['num_dy'] * self.gripper.finger_width,
-                                        (params['num_dy'] + 1) * self.gripper.finger_width,
-                                        self.gripper.finger_width):
+                    for dy in np.arange(
+                        -params["num_dy"] * self.gripper.finger_width, (params["num_dy"] + 1) * self.gripper.finger_width, self.gripper.finger_width
+                    ):
                         # compute centers and axes
                         tmp_major_pc = np.dot(rotation, major_pc * normal_dir)
                         tmp_grasp_normal = np.dot(rotation, new_normal * normal_dir)
                         tmp_grasp_bottom_center = selected_surface + tmp_major_pc * dy
                         # go back a bite after rotation dtheta and translation dy!
-                        tmp_grasp_bottom_center = self.gripper.init_bite * (
-                                -tmp_grasp_normal * normal_dir) + tmp_grasp_bottom_center
+                        tmp_grasp_bottom_center = self.gripper.init_bite * (-tmp_grasp_normal * normal_dir) + tmp_grasp_bottom_center
 
-                        open_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                     tmp_major_pc, minor_pc, graspable,
-                                                                     hand_points, "p_open")
-                        bottom_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                       tmp_major_pc, minor_pc, graspable,
-                                                                       hand_points,
-                                                                       "p_bottom")
+                        open_points, _ = self.check_collision_square(
+                            tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_open"
+                        )
+                        bottom_points, _ = self.check_collision_square(
+                            tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_bottom"
+                        )
                         if open_points is True and bottom_points is False:
 
-                            left_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                         tmp_major_pc, minor_pc, graspable,
-                                                                         hand_points,
-                                                                         "p_left")
-                            right_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                          tmp_major_pc, minor_pc, graspable,
-                                                                          hand_points,
-                                                                          "p_right")
+                            left_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_left"
+                            )
+                            right_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_right"
+                            )
 
                             if left_points is False and right_points is False:
-                                dy_potentials.append([tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                      tmp_major_pc, minor_pc])
+                                dy_potentials.append([tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc])
                     if len(dy_potentials) != 0:
                         # we only take the middle grasp from dy direction.
                         potential_grasp.append(dy_potentials[int(np.ceil(len(dy_potentials) / 2) - 1)])
                 approach_dist = self.gripper.hand_depth  # use gripper depth
-                num_approaches = int(approach_dist / params['approach_step'])
+                num_approaches = int(approach_dist / params["approach_step"])
                 for ptg in potential_grasp:
                     for approach_s in range(num_approaches):
-                        tmp_grasp_bottom_center = ptg[1] * approach_s * params['approach_step'] + ptg[0]
+                        tmp_grasp_bottom_center = ptg[1] * approach_s * params["approach_step"] + ptg[0]
 
                         tmp_grasp_normal = ptg[1]
                         tmp_major_pc = ptg[2]
                         minor_pc = ptg[3]
-                        is_collide = self.check_collide(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                        tmp_major_pc, minor_pc, graspable, hand_points)
+                        is_collide = self.check_collide(tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points)
                         if is_collide:
                             # if collide, go back one step to get a collision free hand position
-                            tmp_grasp_bottom_center += (-tmp_grasp_normal) * params['approach_step']
+                            tmp_grasp_bottom_center += (-tmp_grasp_normal) * params["approach_step"]
 
                             # final check
-                            open_points, _ = self.check_collision_square(tmp_grasp_bottom_center,
-                                                                         tmp_grasp_normal,
-                                                                         tmp_major_pc, minor_pc, graspable,
-                                                                         hand_points, "p_open")
-                            is_collide = self.check_collide(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                            tmp_major_pc, minor_pc, graspable, hand_points)
+                            open_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_open"
+                            )
+                            is_collide = self.check_collide(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points
+                            )
                             if open_points and not is_collide:
-                                processed_potential_grasp.append([tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                  tmp_major_pc, minor_pc, tmp_grasp_bottom_center])
+                                processed_potential_grasp.append(
+                                    [tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, tmp_grasp_bottom_center]
+                                )
 
-                                self.show_points(selected_surface, color='r', scale_factor=.005)
-                                if params['debug_vis']:
-                                    logger.info('usefull grasp sample point original: %s', selected_surface)
-                                    self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                tmp_major_pc, minor_pc, graspable, hand_points,
-                                                                "p_open", vis=True)
+                                self.show_points(selected_surface, color="r", scale_factor=0.005)
+                                if params["debug_vis"]:
+                                    logger.info("usefull grasp sample point original: %s", selected_surface)
+                                    self.check_collision_square(
+                                        tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_open", vis=True
+                                    )
                             break
                 logger.info("processed_potential_grasp %d", len(processed_potential_grasp))
 
@@ -1004,17 +1023,17 @@ class PointGraspSampler(GraspSampler):
         Returns
         -------
         :obj:`list` of :obj:`ParallelJawPtGrasp3D`
-           list of generated grasps
+            list of generated grasps
         """
         params = {
-            'num_rball_points': 27,  # FIXME: the same as meshpy..surface_normal()
-            'num_dy': 10,  # number
-            'dtheta': 10,  # unit degree
-            'range_dtheta': 90,
-            'debug_vis': False,
-            'approach_step': 0.005,
-            'max_trail_for_r_ball': 3000,
-            'voxel_grid_ratio': 5,  # voxel_grid/sdf.resolution
+            "num_rball_points": 27,  # FIXME: the same as meshpy..surface_normal()
+            "num_dy": 10,  # number
+            "dtheta": 10,  # unit degree
+            "range_dtheta": 90,
+            "debug_vis": False,
+            "approach_step": 0.005,
+            "max_trail_for_r_ball": 3000,
+            "voxel_grid_ratio": 5,  # voxel_grid/sdf.resolution
         }
 
         # get all surface points
@@ -1040,8 +1059,7 @@ class PointGraspSampler(GraspSampler):
             min_height = min(surface_points[:, 2])
             max_height = max(surface_points[:, 2])
 
-            selected_height = min_height + np.random.normal(3 * (max_height - min_height) / 4,
-                                                            (max_height - min_height) / 6)
+            selected_height = min_height + np.random.normal(3 * (max_height - min_height) / 4, (max_height - min_height) / 6)
             ind_10 = np.argsort(abs(surface_points[:, 2] - selected_height))[:10]
             ind = ind_10[np.random.choice(len(ind_10), 1)]
             # end of modification 5
@@ -1050,66 +1068,58 @@ class PointGraspSampler(GraspSampler):
 
             # cal major principal curvature
             r_ball = max(self.gripper.hand_depth, self.gripper.hand_outer_diameter)
-            point_amount = params['num_rball_points']
-            max_trial = params['max_trail_for_r_ball']
+            point_amount = params["num_rball_points"]
+            max_trial = params["max_trail_for_r_ball"]
             # TODO: we can not directly sample from point clouds so we use a relatively small radius.
-            ret = self.cal_surface_property(graspable, selected_surface, r_ball,
-                                            point_amount, max_trial, vis=params['debug_vis'])
+            ret = self.cal_surface_property(graspable, selected_surface, r_ball, point_amount, max_trial, vis=params["debug_vis"])
             if ret is None:
                 continue
             else:
                 old_normal, new_normal, major_pc, minor_pc = ret
 
-            for normal_dir in [-1., 1.]:  # FIXME: here we do not know the direction of the object normal
+            for normal_dir in [-1.0, 1.0]:  # FIXME: here we do not know the direction of the object normal
                 grasp_bottom_center = self.gripper.init_bite * new_normal * -normal_dir + selected_surface
                 new_normal = normal_dir * new_normal
                 major_pc = normal_dir * major_pc
 
-                if params['debug_vis']:
+                if params["debug_vis"]:
                     # example of show grasp frame
-                    self.show_grasp_norm_oneside(selected_surface, new_normal, major_pc,
-                                                 minor_pc, scale_factor=0.001)
-                    self.show_points(selected_surface, color='g', scale_factor=.002)
+                    self.show_grasp_norm_oneside(selected_surface, new_normal, major_pc, minor_pc, scale_factor=0.001)
+                    self.show_points(selected_surface, color="g", scale_factor=0.002)
 
                 # some magic number referred from origin paper
                 potential_grasp = []
                 extra_potential_grasp = []
 
-                for dtheta in np.arange(-params['range_dtheta'],
-                                        params['range_dtheta'] + 1,
-                                        params['dtheta']):
+                for dtheta in np.arange(-params["range_dtheta"], params["range_dtheta"] + 1, params["dtheta"]):
                     dy_potentials = []
                     x, y, z = minor_pc
                     rotation = RigidTransform.rotation_from_quaternion(np.array([dtheta / 180 * np.pi, x, y, z]))
-                    for dy in np.arange(-params['num_dy'] * self.gripper.finger_width,
-                                        (params['num_dy'] + 1) * self.gripper.finger_width,
-                                        self.gripper.finger_width):
+                    for dy in np.arange(
+                        -params["num_dy"] * self.gripper.finger_width, (params["num_dy"] + 1) * self.gripper.finger_width, self.gripper.finger_width
+                    ):
                         # compute centers and axes
                         tmp_major_pc = np.dot(rotation, major_pc)
                         tmp_grasp_normal = np.dot(rotation, new_normal)
                         tmp_grasp_bottom_center = grasp_bottom_center + tmp_major_pc * dy
 
-                        open_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                     tmp_major_pc, minor_pc, graspable,
-                                                                     hand_points, "p_open")
-                        bottom_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                       tmp_major_pc, minor_pc, graspable,
-                                                                       hand_points,
-                                                                       "p_bottom")
+                        open_points, _ = self.check_collision_square(
+                            tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_open"
+                        )
+                        bottom_points, _ = self.check_collision_square(
+                            tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_bottom"
+                        )
                         if open_points is True and bottom_points is False:
 
-                            left_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                         tmp_major_pc, minor_pc, graspable,
-                                                                         hand_points,
-                                                                         "p_left")
-                            right_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                          tmp_major_pc, minor_pc, graspable,
-                                                                          hand_points,
-                                                                          "p_right")
+                            left_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_left"
+                            )
+                            right_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_right"
+                            )
 
                             if left_points is False and right_points is False:
-                                dy_potentials.append([tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                      tmp_major_pc, minor_pc])
+                                dy_potentials.append([tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc])
                     if len(dy_potentials) != 0:
                         # we only take the middle grasp from dy direction.
                         # potential_grasp += dy_potentials
@@ -1117,42 +1127,42 @@ class PointGraspSampler(GraspSampler):
 
                     # get more potential_grasp by moving along minor_pc
                     if len(potential_grasp) != 0:
-                        self.show_points(selected_surface, color='r', scale_factor=.005)
+                        self.show_points(selected_surface, color="r", scale_factor=0.005)
                         for pt in potential_grasp:
                             for dz in range(-5, 5):
                                 new_center = minor_pc * dz * 0.01 + pt[0]
                                 extra_potential_grasp.append([new_center, pt[1], pt[2], pt[3]])
                 approach_dist = self.gripper.hand_depth  # use gripper depth
-                num_approaches = int(approach_dist // params['approach_step'])
+                num_approaches = int(approach_dist // params["approach_step"])
                 for ptg in extra_potential_grasp:
                     for _ in range(num_approaches):
-                        tmp_grasp_bottom_center = ptg[1] * params['approach_step'] + ptg[0]
+                        tmp_grasp_bottom_center = ptg[1] * params["approach_step"] + ptg[0]
                         tmp_grasp_normal = ptg[1]
                         tmp_major_pc = ptg[2]
                         minor_pc = ptg[3]
-                        not_collide = self.check_approach_grasp(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                tmp_major_pc, minor_pc, graspable, hand_points)
+                        not_collide = self.check_approach_grasp(
+                            tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points
+                        )
 
                         if not not_collide:
                             # if collide, go back one step to get a collision free hand position
-                            tmp_grasp_bottom_center = -ptg[1] * params['approach_step'] + ptg[0]
+                            tmp_grasp_bottom_center = -ptg[1] * params["approach_step"] + ptg[0]
                             # final check
-                            open_points, _ = self.check_collision_square(tmp_grasp_bottom_center,
-                                                                         tmp_grasp_normal,
-                                                                         tmp_major_pc, minor_pc, graspable,
-                                                                         hand_points, "p_open")
-                            not_collide = self.check_approach_grasp(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                    tmp_major_pc, minor_pc, graspable, hand_points)
+                            open_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_open"
+                            )
+                            not_collide = self.check_approach_grasp(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points
+                            )
                             if open_points and not_collide:
-                                processed_potential_grasp.append([tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                  tmp_major_pc, minor_pc])
+                                processed_potential_grasp.append([tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc])
 
-                                self.show_points(selected_surface, color='r', scale_factor=.005)
-                                if params['debug_vis']:
-                                    logger.info('usefull grasp sample point original: %s', selected_surface)
-                                    self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                tmp_major_pc, minor_pc, graspable, hand_points,
-                                                                "p_open", vis=True)
+                                self.show_points(selected_surface, color="r", scale_factor=0.005)
+                                if params["debug_vis"]:
+                                    logger.info("usefull grasp sample point original: %s", selected_surface)
+                                    self.check_collision_square(
+                                        tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, graspable, hand_points, "p_open", vis=True
+                                    )
                         break
                 logger.info("processed_potential_grasp %d", len(processed_potential_grasp))
 
@@ -1175,7 +1185,7 @@ class OldPointGraspSampler(GraspSampler):
     Sample grasps by PointGraspSampler
     """
 
-    def show_obj(self, graspable, color='b', clear=False):
+    def show_obj(self, graspable, color="b", clear=False):
         if clear:
             plt.figure()
             plt.clf()
@@ -1183,50 +1193,35 @@ class OldPointGraspSampler(GraspSampler):
             plt.ion()
 
         # plot the obj
-        ax = plt.gca(projection='3d')
+        ax = plt.gca(projection="3d")
         surface = graspable.sdf.surface_points()[0]
         surface = surface[np.random.choice(surface.shape[0], 1000, replace=False)]
-        ax.scatter(surface[:, 0], surface[:, 1], surface[:, 2], '.',
-                   s=np.ones_like(surface[:, 0]) * 0.3, c=color)
+        ax.scatter(surface[:, 0], surface[:, 1], surface[:, 2], ".", s=np.ones_like(surface[:, 0]) * 0.3, c=color)
 
-    def show_grasp_norm(self, graspable, grasp_center, grasp_bottom_center,
-                        grasp_normal, grasp_axis, minor_pc, color='b', clear=False):
+    def show_grasp_norm(self, graspable, grasp_center, grasp_bottom_center, grasp_normal, grasp_axis, minor_pc, color="b", clear=False):
         if clear:
             plt.figure()
             plt.clf()
             h = plt.gcf()
             plt.ion()
 
-        ax = plt.gca(projection='3d')
+        ax = plt.gca(projection="3d")
         grasp_center_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_center)
-        ax.scatter(grasp_center_grid[0], grasp_center_grid[1], grasp_center_grid[2], marker='s', c=color)
+        ax.scatter(grasp_center_grid[0], grasp_center_grid[1], grasp_center_grid[2], marker="s", c=color)
         grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center)
-        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2],
-                   marker='x', c=color)
-        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(
-            grasp_bottom_center + 0.5 * grasp_axis * self.gripper.max_width)
-        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2],
-                   marker='x', c=color)
-        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(
-            grasp_bottom_center - 0.5 * grasp_axis * self.gripper.max_width)
-        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2],
-                   marker='x', c=color)
-        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(
-            grasp_bottom_center + 0.5 * minor_pc * self.gripper.max_width)
-        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2],
-                   marker='^', c=color)
-        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(
-            grasp_bottom_center - 0.5 * minor_pc * self.gripper.max_width)
-        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2],
-                   marker='^', c=color)
-        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(
-            grasp_bottom_center + 0.5 * grasp_normal * self.gripper.max_width)
-        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2],
-                   marker='*', c=color)
-        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(
-            grasp_bottom_center - 0.5 * grasp_normal * self.gripper.max_width)
-        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2],
-                   marker='*', c=color)
+        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2], marker="x", c=color)
+        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center + 0.5 * grasp_axis * self.gripper.max_width)
+        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2], marker="x", c=color)
+        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center - 0.5 * grasp_axis * self.gripper.max_width)
+        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2], marker="x", c=color)
+        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center + 0.5 * minor_pc * self.gripper.max_width)
+        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2], marker="^", c=color)
+        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center - 0.5 * minor_pc * self.gripper.max_width)
+        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2], marker="^", c=color)
+        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center + 0.5 * grasp_normal * self.gripper.max_width)
+        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2], marker="*", c=color)
+        grasp_center_bottom_grid = graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center - 0.5 * grasp_normal * self.gripper.max_width)
+        ax.scatter(grasp_center_bottom_grid[0], grasp_center_bottom_grid[1], grasp_center_bottom_grid[2], marker="*", c=color)
 
     def sample_grasps(self, graspable, num_grasps, vis=False, max_num_samples=1000, **kwargs):
         """
@@ -1244,14 +1239,14 @@ class OldPointGraspSampler(GraspSampler):
         Returns
         -------
         :obj:`list` of :obj:`ParallelJawPtGrasp3D`
-           list of generated grasps
+            list of generated grasps
         """
         params = {
-            'num_rball_points': 27,  # FIXME: the same as meshpy..surface_normal()
-            'num_dy': 0.3,
-            'range_dtheta': 0.30,
-            'max_chain_length': 20,
-            'max_retry_times': 100
+            "num_rball_points": 27,  # FIXME: the same as meshpy..surface_normal()
+            "num_dy": 0.3,
+            "range_dtheta": 0.30,
+            "max_chain_length": 20,
+            "max_retry_times": 100,
         }
 
         # get all surface points
@@ -1280,30 +1275,28 @@ class OldPointGraspSampler(GraspSampler):
             grasp_bottom_center = surface_points[ind, :]
             grasp_bottom_center = grasp_bottom_center.reshape(3)
 
-            for ind in range(params['max_chain_length']):
-                new_grasp_bottom_center = self.sample_chain(grasp_bottom_center, graspable,
-                                                            params, vis)
+            for ind in range(params["max_chain_length"]):
+                new_grasp_bottom_center = self.sample_chain(grasp_bottom_center, graspable, params, vis)
                 if new_grasp_bottom_center is None:
                     i += ind
                     break
                 else:
                     grasp_bottom_center = new_grasp_bottom_center
             else:
-                i += params['max_chain_length']
-            print('Chain broken, length:', ind, 'amount:', len(self.grasps))
+                i += params["max_chain_length"]
+            print("Chain broken, length:", ind, "amount:", len(self.grasps))
         return self.grasps
 
     def sample_chain(self, grasp_bottom_center, graspable, params, vis):
         grasp_success = False
-        grasp_normal = graspable.sdf.surface_normal(
-            graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center))
-        for normal_dir in [-1., 1.]:  # FIXME: here we assume normal is outward
+        grasp_normal = graspable.sdf.surface_normal(graspable.sdf.transform_pt_obj_to_grid(grasp_bottom_center))
+        for normal_dir in [-1.0, 1.0]:  # FIXME: here we assume normal is outward
             grasp_center = self.gripper.max_depth * normal_dir * grasp_normal + grasp_bottom_center
             r_ball = max(self.gripper.max_depth, self.gripper.max_width)
             # cal major principal curvature
             tmp_count = 0
             M = np.zeros((3, 3))
-            while tmp_count < params['num_rball_points']:
+            while tmp_count < params["num_rball_points"]:
                 neighbor = grasp_bottom_center + 2 * (np.random.rand(3) - 0.5) * r_ball
                 normal = graspable.sdf.surface_normal(graspable.sdf.transform_pt_obj_to_grid(neighbor))
                 if normal is None:
@@ -1323,11 +1316,7 @@ class OldPointGraspSampler(GraspSampler):
                 major_pc = major_pc / np.linalg.norm(major_pc)
             grasp_axis = major_pc
 
-            g = ParallelJawPtGrasp3D(
-                ParallelJawPtGrasp3D.configuration_from_params(
-                    grasp_center,
-                    grasp_axis,
-                    self.gripper.max_width))
+            g = ParallelJawPtGrasp3D(ParallelJawPtGrasp3D.configuration_from_params(grasp_center, grasp_axis, self.gripper.max_width))
             grasp_success, _ = g.close_fingers(graspable, vis=vis)
             if grasp_success:
                 self.grasps.append(g)
@@ -1336,20 +1325,18 @@ class OldPointGraspSampler(GraspSampler):
 
         trial = 0
         next_grasp_bottom_center = None
-        while trial < params['max_retry_times'] and next_grasp_bottom_center is None:
+        while trial < params["max_retry_times"] and next_grasp_bottom_center is None:
             trial += 1
-            dy = np.random.uniform(-params['num_dy'] * self.gripper.finger_width,
-                                   (params['num_dy']) * self.gripper.finger_width)
-            dtheta = np.random.uniform(-params['range_dtheta'], params['range_dtheta'])
+            dy = np.random.uniform(-params["num_dy"] * self.gripper.finger_width, (params["num_dy"]) * self.gripper.finger_width)
+            dtheta = np.random.uniform(-params["range_dtheta"], params["range_dtheta"])
 
-            for tmp_normal_dir in [-1., 1.]:
+            for tmp_normal_dir in [-1.0, 1.0]:
                 # get new grasp sample from a chain
                 # some magic number referred from origin paper
 
                 # compute centers and axes
                 x, y, z = minor_pc
-                rotation = RigidTransform.rotation_from_quaternion(
-                    np.array([dtheta / 180 * np.pi, x, y, z]))
+                rotation = RigidTransform.rotation_from_quaternion(np.array([dtheta / 180 * np.pi, x, y, z]))
                 tmp_grasp_axis = np.dot(rotation, grasp_axis)
                 tmp_grasp_normal = np.dot(rotation, grasp_normal)
 
@@ -1359,14 +1346,10 @@ class OldPointGraspSampler(GraspSampler):
                 approach_dist = 0.2
                 approach_dist_grid = graspable.sdf.transform_pt_obj_to_grid(approach_dist)
                 num_approach_samples = int(Grasp.samples_per_grid * approach_dist_grid / 2)
-                approach_loa = ParallelJawPtGrasp3D.create_line_of_action(tmp_grasp_bottom_center,
-                                                                          -tmp_grasp_normal * tmp_normal_dir,
-                                                                          approach_dist,
-                                                                          graspable,
-                                                                          num_approach_samples,
-                                                                          min_width=0)
-                contact_found, contact = ParallelJawPtGrasp3D.find_contact(approach_loa,
-                                                                           graspable, vis=vis)
+                approach_loa = ParallelJawPtGrasp3D.create_line_of_action(
+                    tmp_grasp_bottom_center, -tmp_grasp_normal * tmp_normal_dir, approach_dist, graspable, num_approach_samples, min_width=0
+                )
+                contact_found, contact = ParallelJawPtGrasp3D.find_contact(approach_loa, graspable, vis=vis)
                 if not contact_found:
                     continue
                 else:
@@ -1376,7 +1359,7 @@ class OldPointGraspSampler(GraspSampler):
                     else:
                         next_grasp_bottom_center = contact.point
                         break
-        print('amount:', len(self.grasps), 'next center:', next_grasp_bottom_center)
+        print("amount:", len(self.grasps), "next center:", next_grasp_bottom_center)
         return next_grasp_bottom_center
 
 
@@ -1386,8 +1369,7 @@ class GpgGraspSamplerPcl(GraspSampler):
     http://journals.sagepub.com/doi/10.1177/0278364917735594
     """
 
-    def sample_grasps(self, point_cloud, points_for_sample, all_normal, num_grasps=20, max_num_samples=200,
-                      show_final_grasp=False, **kwargs):
+    def sample_grasps(self, point_cloud, points_for_sample, all_normal, num_grasps=20, max_num_samples=200, show_final_grasp=False, **kwargs):
         """
         Returns a list of candidate grasps for graspable object using uniform point pairs from the SDF
 
@@ -1404,18 +1386,18 @@ class GpgGraspSamplerPcl(GraspSampler):
         Returns
         -------
         :obj:`list` of :obj:`ParallelJawPtGrasp3D`
-           list of generated grasps
+            list of generated grasps
         """
         params = {
-            'num_rball_points': 27,  # FIXME: the same as meshpy..surface_normal()
-            'num_dy': 10,  # number
-            'dtheta': 10,  # unit degree
-            'range_dtheta': 90,
-            'debug_vis': False,
-            'r_ball': self.gripper.hand_height,
-            'approach_step': 0.005,
-            'max_trail_for_r_ball': 1000,
-            'voxel_grid_ratio': 5,  # voxel_grid/sdf.resolution
+            "num_rball_points": 27,  # FIXME: the same as meshpy..surface_normal()
+            "num_dy": 10,  # number
+            "dtheta": 10,  # unit degree
+            "range_dtheta": 90,
+            "debug_vis": False,
+            "r_ball": self.gripper.hand_height,
+            "approach_step": 0.005,
+            "max_trail_for_r_ball": 1000,
+            "voxel_grid_ratio": 5,  # voxel_grid/sdf.resolution
         }
 
         # get all surface points
@@ -1451,15 +1433,15 @@ class GpgGraspSamplerPcl(GraspSampler):
                 return []
             scipy.random.seed()  # important! without this, the worker will get a pseudo-random sequences.
             ind = np.random.choice(points_for_sample.shape[0], size=1, replace=False)
-            selected_surface = points_for_sample[ind, :].reshape(3, )
+            selected_surface = points_for_sample[ind, :].reshape(
+                3,
+            )
             if show_final_grasp:
-                mlab.points3d(selected_surface[0], selected_surface[1], selected_surface[2],
-                              color=(1, 0, 0), scale_factor=0.005)
+                mlab.points3d(selected_surface[0], selected_surface[1], selected_surface[2], color=(1, 0, 0), scale_factor=0.005)
 
             # cal major principal curvature
             # r_ball = params['r_ball']  # FIXME: for some relative small obj, we need to use pre-defined radius
-            r_ball = max(self.gripper.hand_outer_diameter - self.gripper.finger_width, self.gripper.hand_depth,
-                         self.gripper.hand_height / 2.0)
+            r_ball = max(self.gripper.hand_outer_diameter - self.gripper.finger_width, self.gripper.hand_depth, self.gripper.hand_height / 2.0)
             # point_amount = params['num_rball_points']
             # max_trial = params['max_trail_for_r_ball']
             # TODO: we can not directly sample from point clouds so we use a relatively small radius.
@@ -1473,7 +1455,7 @@ class GpgGraspSamplerPcl(GraspSampler):
             pcd_tree = o3d.geometry.KDTreeFlann(pcd)
             print("Find its neighbors with distance less than r_ball")
             [k, kd_indices, sqr_distances] = pcd_tree.search_hybrid_vector_3d(selected_surface, r_ball, 100)
-            #TODO, here, we replaced pcl kdtee with open3d. verify the result before using it!
+            # TODO, here, we replaced pcl kdtee with open3d. verify the result before using it!
             print("TODO, here, we replaced pcl kdtee with open3d. verify the result before using it!")
             for _ in range(len(kd_indices[0])):
                 if sqr_distances[0, _] != 0:
@@ -1506,57 +1488,49 @@ class GpgGraspSamplerPcl(GraspSampler):
                 minor_pc = -minor_pc
 
             for normal_dir in [1]:  # FIXED: we know the direction of norm is outward as we know the camera pos
-                if params['debug_vis']:
+                if params["debug_vis"]:
                     # example of show grasp frame
-                    self.show_grasp_norm_oneside(selected_surface, new_normal * normal_dir, major_pc * normal_dir,
-                                                 minor_pc, scale_factor=0.001)
-                    self.show_points(selected_surface, color='g', scale_factor=.002)
+                    self.show_grasp_norm_oneside(selected_surface, new_normal * normal_dir, major_pc * normal_dir, minor_pc, scale_factor=0.001)
+                    self.show_points(selected_surface, color="g", scale_factor=0.002)
                     self.show_points(all_points)
                     # show real norm direction: if new_norm has very diff than pcl cal norm, then maybe a bug.
-                    self.show_line(selected_surface, (selected_surface + all_normal[ind]*0.05).reshape(3))
+                    self.show_line(selected_surface, (selected_surface + all_normal[ind] * 0.05).reshape(3))
                     mlab.show()
 
                 # some magic number referred from origin paper
                 potential_grasp = []
-                for dtheta in np.arange(-params['range_dtheta'],
-                                        params['range_dtheta'] + 1,
-                                        params['dtheta']):
+                for dtheta in np.arange(-params["range_dtheta"], params["range_dtheta"] + 1, params["dtheta"]):
                     dy_potentials = []
                     x, y, z = minor_pc
                     dtheta = np.float64(dtheta)
                     rotation = RigidTransform.rotation_from_quaternion(np.array([dtheta / 180 * np.pi, x, y, z]))
-                    for dy in np.arange(-params['num_dy'] * self.gripper.finger_width,
-                                        (params['num_dy'] + 1) * self.gripper.finger_width,
-                                        self.gripper.finger_width):
+                    for dy in np.arange(
+                        -params["num_dy"] * self.gripper.finger_width, (params["num_dy"] + 1) * self.gripper.finger_width, self.gripper.finger_width
+                    ):
                         # compute centers and axes
                         tmp_major_pc = np.dot(rotation, major_pc * normal_dir)
                         tmp_grasp_normal = np.dot(rotation, new_normal * normal_dir)
                         tmp_grasp_bottom_center = selected_surface + tmp_major_pc * dy
                         # go back a bite after rotation dtheta and translation dy!
-                        tmp_grasp_bottom_center = self.gripper.init_bite * (
-                                -tmp_grasp_normal * normal_dir) + tmp_grasp_bottom_center
+                        tmp_grasp_bottom_center = self.gripper.init_bite * (-tmp_grasp_normal * normal_dir) + tmp_grasp_bottom_center
 
-                        open_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                     tmp_major_pc, minor_pc, all_points,
-                                                                     hand_points, "p_open")
-                        bottom_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                       tmp_major_pc, minor_pc, all_points,
-                                                                       hand_points,
-                                                                       "p_bottom")
+                        open_points, _ = self.check_collision_square(
+                            tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, all_points, hand_points, "p_open"
+                        )
+                        bottom_points, _ = self.check_collision_square(
+                            tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, all_points, hand_points, "p_bottom"
+                        )
                         if open_points is True and bottom_points is False:
 
-                            left_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                         tmp_major_pc, minor_pc, all_points,
-                                                                         hand_points,
-                                                                         "p_left")
-                            right_points, _ = self.check_collision_square(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                          tmp_major_pc, minor_pc, all_points,
-                                                                          hand_points,
-                                                                          "p_right")
+                            left_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, all_points, hand_points, "p_left"
+                            )
+                            right_points, _ = self.check_collision_square(
+                                tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, all_points, hand_points, "p_right"
+                            )
 
                             if left_points is False and right_points is False:
-                                dy_potentials.append([tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                      tmp_major_pc, minor_pc])
+                                dy_potentials.append([tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc])
 
                     if len(dy_potentials) != 0:
                         # we only take the middle grasp from dy direction.
@@ -1569,66 +1543,70 @@ class GpgGraspSamplerPcl(GraspSampler):
                             potential_grasp.append(center_dy)
 
                 approach_dist = self.gripper.hand_depth  # use gripper depth
-                num_approaches = int(approach_dist / params['approach_step'])
+                num_approaches = int(approach_dist / params["approach_step"])
 
                 for ptg in potential_grasp:
                     for approach_s in range(num_approaches):
-                        tmp_grasp_bottom_center = ptg[1] * approach_s * params['approach_step'] + ptg[0]
+                        tmp_grasp_bottom_center = ptg[1] * approach_s * params["approach_step"] + ptg[0]
                         tmp_grasp_normal = ptg[1]
                         tmp_major_pc = ptg[2]
                         minor_pc = ptg[3]
-                        is_collide = self.check_collide(tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                        tmp_major_pc, minor_pc, point_cloud, hand_points)
+                        is_collide = self.check_collide(tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, point_cloud, hand_points)
 
                         if is_collide:
                             # if collide, go back one step to get a collision free hand position
-                            tmp_grasp_bottom_center += (-tmp_grasp_normal) * params['approach_step'] * 3
+                            tmp_grasp_bottom_center += (-tmp_grasp_normal) * params["approach_step"] * 3
                             # minus 3 means we want the grasp go back a little bitte more.
 
                             # here we check if the gripper collide with the table.
-                            hand_points_ = self.get_hand_points(tmp_grasp_bottom_center,
-                                                                tmp_grasp_normal,
-                                                                tmp_major_pc)[1:]
+                            hand_points_ = self.get_hand_points(tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc)[1:]
                             min_finger_end = hand_points_[:, 2].min()
                             min_finger_end_pos_ind = np.where(hand_points_[:, 2] == min_finger_end)[0][0]
 
                             safety_dis_above_table = 0.01
                             if min_finger_end < safety_dis_above_table:
                                 min_finger_pos = hand_points_[min_finger_end_pos_ind]  # the lowest point in a gripper
-                                x = -min_finger_pos[2]*tmp_grasp_normal[0]/tmp_grasp_normal[2]+min_finger_pos[0]
-                                y = -min_finger_pos[2]*tmp_grasp_normal[1]/tmp_grasp_normal[2]+min_finger_pos[1]
+                                x = -min_finger_pos[2] * tmp_grasp_normal[0] / tmp_grasp_normal[2] + min_finger_pos[0]
+                                y = -min_finger_pos[2] * tmp_grasp_normal[1] / tmp_grasp_normal[2] + min_finger_pos[1]
                                 p_table = np.array([x, y, 0])  # the point that on the table
                                 dis_go_back = np.linalg.norm([min_finger_pos, p_table]) + safety_dis_above_table
-                                tmp_grasp_bottom_center_modify = tmp_grasp_bottom_center-tmp_grasp_normal*dis_go_back
+                                tmp_grasp_bottom_center_modify = tmp_grasp_bottom_center - tmp_grasp_normal * dis_go_back
                             else:
                                 # if the grasp is not collide with the table, do not change the grasp
                                 tmp_grasp_bottom_center_modify = tmp_grasp_bottom_center
 
                             # final check
-                            _, open_points = self.check_collision_square(tmp_grasp_bottom_center_modify,
-                                                                         tmp_grasp_normal,
-                                                                         tmp_major_pc, minor_pc, all_points,
-                                                                         hand_points, "p_open")
-                            is_collide = self.check_collide(tmp_grasp_bottom_center_modify, tmp_grasp_normal,
-                                                            tmp_major_pc, minor_pc, all_points, hand_points)
+                            _, open_points = self.check_collision_square(
+                                tmp_grasp_bottom_center_modify, tmp_grasp_normal, tmp_major_pc, minor_pc, all_points, hand_points, "p_open"
+                            )
+                            is_collide = self.check_collide(
+                                tmp_grasp_bottom_center_modify, tmp_grasp_normal, tmp_major_pc, minor_pc, all_points, hand_points
+                            )
                             if (len(open_points) > 10) and not is_collide:
                                 # here 10 set the minimal points in a grasp, we can set a parameter later
-                                processed_potential_grasp.append([tmp_grasp_bottom_center, tmp_grasp_normal,
-                                                                  tmp_major_pc, minor_pc,
-                                                                  tmp_grasp_bottom_center_modify])
-                                if params['debug_vis']:
-                                    self.show_points(selected_surface, color='r', scale_factor=.005)
-                                    logger.info('usefull grasp sample point original: %s', selected_surface)
-                                    self.check_collision_square(tmp_grasp_bottom_center_modify, tmp_grasp_normal,
-                                                                tmp_major_pc, minor_pc, all_points, hand_points,
-                                                                "p_open", vis=True)
+                                processed_potential_grasp.append(
+                                    [tmp_grasp_bottom_center, tmp_grasp_normal, tmp_major_pc, minor_pc, tmp_grasp_bottom_center_modify]
+                                )
+                                if params["debug_vis"]:
+                                    self.show_points(selected_surface, color="r", scale_factor=0.005)
+                                    logger.info("usefull grasp sample point original: %s", selected_surface)
+                                    self.check_collision_square(
+                                        tmp_grasp_bottom_center_modify,
+                                        tmp_grasp_normal,
+                                        tmp_major_pc,
+                                        minor_pc,
+                                        all_points,
+                                        hand_points,
+                                        "p_open",
+                                        vis=True,
+                                    )
                                 break
                 logger.info("processed_potential_grasp %d", len(processed_potential_grasp))
 
             sampled_surface_amount += 1
             logger.info("current amount of sampled surface %d", sampled_surface_amount)
             print("current amount of sampled surface:", sampled_surface_amount)
-            if params['debug_vis']:  # not sampled_surface_amount % 5:
+            if params["debug_vis"]:  # not sampled_surface_amount % 5:
                 if len(all_points) > 10000:
                     all_points = all_points[:1000, :]
                 self.show_all_grasps(all_points, processed_potential_grasp)
@@ -1642,8 +1620,7 @@ class GpgGraspSamplerPcl(GraspSampler):
                     mlab.points3d(0, 0, 0, scale_factor=0.01, color=(0, 1, 0))
                     table_points = np.array([[-1, 1, 0], [1, 1, 0], [1, -1, 0], [-1, -1, 0]]) * 0.5
                     triangles = [(1, 2, 3), (0, 1, 3)]
-                    mlab.triangular_mesh(table_points[:, 0], table_points[:, 1], table_points[:, 2],
-                                         triangles, color=(0.8, 0.8, 0.8), opacity=0.5)
+                    mlab.triangular_mesh(table_points[:, 0], table_points[:, 1], table_points[:, 2], triangles, color=(0.8, 0.8, 0.8), opacity=0.5)
                     mlab.show()
                 return processed_potential_grasp
             #

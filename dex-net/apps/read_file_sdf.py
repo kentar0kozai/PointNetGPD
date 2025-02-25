@@ -16,8 +16,9 @@ All the cores of a computer can do the job parallel.
 pre request:
 sudo apt install pcl-tools
 """
-# file_resolution = "google_512k"
-file_resolution = "google_16k"
+file_resolution = "google_512k"
+# file_resolution = "google_16k"
+
 
 def get_file_name(file_dir_):
     file_list = []
@@ -32,10 +33,10 @@ def get_file_name(file_dir_):
 
 
 def generate_sdf(path_to_sdfgen, obj_filename, dim, padding):
-    """ Converts mesh to an sdf object """
+    """Converts mesh to an sdf object"""
 
     # create the SDF using binary tools
-    sdfgen_cmd = "%s \"%s\" %d %d" % (path_to_sdfgen, obj_filename, dim, padding)
+    sdfgen_cmd = '%s "%s" %d %d' % (path_to_sdfgen, obj_filename, dim, padding)
     os.system(sdfgen_cmd)
     print("SDF Command: %s" % sdfgen_cmd)
     return
@@ -57,7 +58,7 @@ def generate_obj_from_ply(file_name_):
 
 if __name__ == "__main__":
     home_dir = os.environ["PointNetGPD_FOLDER"]
-    file_dir = home_dir + "/data/ycb-tools/models/ycb"  # for google ycb
+    file_dir = home_dir + "/PointNetGPD/data/ycb-tools/models/ycb"  # for google ycb
     path_sdfgen = home_dir + "/SDFGen/bin/SDFGen"
     file_list_all = get_file_name(file_dir)
     object_numbers = file_list_all.__len__()
