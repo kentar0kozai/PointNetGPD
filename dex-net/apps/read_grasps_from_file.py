@@ -1,11 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Author     : Hongzhuo Liang 
+# Author     : Hongzhuo Liang
 # E-mail     : liang@informatik.uni-hamburg.de
-# Description: 
-# Date       : 30/05/2018 9:57 AM 
+# Description:
+# Date       : 30/05/2018 9:57 AM
 # File Name  : read_grasps_from_file.py
+from tvtk.api import tvtk
+
+
+def polydata_hash(self):
+    return id(self)
+
+
+tvtk.PolyData.__hash__ = polydata_hash
+
 import logging
+
 logging.getLogger().setLevel(logging.FATAL)
 import os
 from meshpy.obj_file import ObjFile
@@ -33,7 +43,7 @@ check_pcd_grasp_points = False
 
 def open_npy_and_obj(name_to_open_):
     npy_m_ = np.load(name_to_open_)
-    file_dir = home_dir + "/data/ycb-tools/models/ycb/"
+    file_dir = home_dir + "/PointNetGPD/data/ycb-tools/models/ycb/"
     object_name_ = name_to_open_.split("/")[-1][:-4]
     ply_name_ = file_dir + object_name_ + "/google_512k/nontextured.ply"
     if not check_pcd_grasp_points:
@@ -70,10 +80,14 @@ def display_gripper_on_object(obj_, grasp_):
     grasp_ = grasp_.perpendicular_table(stable_pose)
 
     Vis.figure(bgcolor=(1, 1, 1), size=(1000, 1000))
-    Vis.gripper_on_object(gripper, grasp_, obj_,
-                          gripper_color=(0.25, 0.25, 0.25),
-                          # stable_pose=stable_pose,  # .T_obj_world,
-                          plot_table=False)
+    Vis.gripper_on_object(
+        gripper,
+        grasp_,
+        obj_,
+        gripper_color=(0.25, 0.25, 0.25),
+        # stable_pose=stable_pose,  # .T_obj_world,
+        plot_table=False,
+    )
     Vis.show()
 
 
@@ -86,7 +100,7 @@ def display_grasps(grasp, graspable, color):
     # cal approach
     cos_t = np.cos(angle)
     sin_t = np.sin(angle)
-    R1 = np.c_[[cos_t, 0, sin_t],[0, 1, 0],[-sin_t, 0, cos_t]]
+    R1 = np.c_[[cos_t, 0, sin_t], [0, 1, 0], [-sin_t, 0, cos_t]]
     axis_y = major_pc
     axis_x = np.array([axis_y[1], -axis_y[0], 0])
     if np.linalg.norm(axis_x) == 0:
@@ -102,8 +116,7 @@ def display_grasps(grasp, graspable, color):
     grasp_bottom_center = -ags.gripper.hand_depth * approach_normal + center_point
     hand_points = ags.get_hand_points(grasp_bottom_center, approach_normal, major_pc)
     local_hand_points = ags.get_hand_points(np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0, 1, 0]))
-    if_collide = ags.check_collide(grasp_bottom_center, approach_normal,
-                                   major_pc, minor_pc, graspable, local_hand_points)
+    if_collide = ags.check_collide(grasp_bottom_center, approach_normal, major_pc, minor_pc, graspable, local_hand_points)
     if not if_collide and (show_fig or save_fig):
         ags.show_grasp_3d(hand_points, color=color)
         return True
@@ -130,7 +143,7 @@ def show_selected_grasps_with_color(m, ply_name_, title, obj_):
                 collision_grasp_num += 1
 
         if save_fig:
-            mlab.savefig("good_"+title+".png")
+            mlab.savefig("good_" + title + ".png")
             mlab.close()
         elif show_fig:
             mlab.title(title, size=0.5)
@@ -146,7 +159,7 @@ def show_selected_grasps_with_color(m, ply_name_, title, obj_):
                 collision_grasp_num += 1
 
         if save_fig:
-            mlab.savefig("bad_"+title+".png")
+            mlab.savefig("bad_" + title + ".png")
             mlab.close()
         elif show_fig:
             mlab.title(title, size=0.5)
@@ -162,7 +175,7 @@ def show_selected_grasps_with_color(m, ply_name_, title, obj_):
             else:
                 ind_good_grasp_.append(i_)
         collision_grasp_num = str(collision_grasp_num)
-        collision_grasp_num = (4-len(collision_grasp_num))*" " + collision_grasp_num
+        collision_grasp_num = (4 - len(collision_grasp_num)) * " " + collision_grasp_num
         print("collision_grasp_num =", collision_grasp_num, "| object name:", title)
         return ind_good_grasp_
 
@@ -182,9 +195,9 @@ def get_grasp_points_num(m, obj_):
         # hand_points = ags.get_hand_points(grasp_bottom_center, approach_normal, major_pc)
         local_hand_points = ags.get_hand_points(np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0, 1, 0]))
 
-        has_points_tmp, ind_points_tmp = ags.check_collision_square(grasp_bottom_center, approach_normal,
-                                                                    major_pc, minor_pc, obj_, local_hand_points,
-                                                                    "p_open")
+        has_points_tmp, ind_points_tmp = ags.check_collision_square(
+            grasp_bottom_center, approach_normal, major_pc, minor_pc, obj_, local_hand_points, "p_open"
+        )
         ind_points_tmp = len(ind_points_tmp)  # here we only want to know the number of in grasp points.
         has_points_.append(has_points_tmp)
         ind_points_.append(ind_points_tmp)

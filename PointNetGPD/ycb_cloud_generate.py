@@ -12,12 +12,12 @@ from rich import print
 BLACK_LIST_OBJ = ["046_plastic_bolt", "063-b_marbles", "063-c_marbles", "063-f_marbles"]
 # extract pointcloud from rgb-d, then convert it into obj coordinate system(tsdf/poisson reconstructed object)
 
+
 def im2col(im, psize):
     n_channels = 1 if len(im.shape) == 2 else im.shape[0]
     (n_channels, rows, cols) = (1,) * (3 - len(im.shape)) + im.shape
 
-    im_pad = np.zeros((n_channels, int(math.ceil(1.0 * rows / psize) * psize),
-                       int(math.ceil(1.0 * cols / psize) * psize)))
+    im_pad = np.zeros((n_channels, int(math.ceil(1.0 * rows / psize) * psize), int(math.ceil(1.0 * cols / psize) * psize)))
     im_pad[:, 0:rows, 0:cols] = im
 
     final = np.zeros((im_pad.shape[1], im_pad.shape[2], n_channels, psize, psize))
@@ -26,10 +26,11 @@ def im2col(im, psize):
             for y in range(psize):
                 im_shift = np.vstack((im_pad[c, x:], im_pad[c, :x]))
                 im_shift = np.column_stack((im_shift[:, y:], im_shift[:, :y]))
-                final[x::psize, y::psize, c] = np.swapaxes(im_shift.reshape(int(im_pad.shape[1] / psize), psize,
-                                                                            int(im_pad.shape[2] / psize), psize), 1, 2)
+                final[x::psize, y::psize, c] = np.swapaxes(
+                    im_shift.reshape(int(im_pad.shape[1] / psize), psize, int(im_pad.shape[2] / psize), psize), 1, 2
+                )
 
-    return np.squeeze(final[0:rows - psize + 1, 0:cols - psize + 1])
+    return np.squeeze(final[0 : rows - psize + 1, 0 : cols - psize + 1])
 
 
 def filterDiscontinuities(depthMap):
@@ -46,13 +47,12 @@ def filterDiscontinuities(depthMap):
     mins = np.min(patches, axis=(2, 3))
     maxes = np.max(patches, axis=(2, 3))
 
-    discont = np.maximum(np.abs(mins - mids),
-                         np.abs(maxes - mids))
+    discont = np.maximum(np.abs(mins - mids), np.abs(maxes - mids))
     mark = discont > thresh
 
     # Account for offsets
     final_mark = np.zeros((480, 640), dtype=np.uint16)
-    final_mark[offset:offset + mark.shape[0], offset:offset + mark.shape[1]] = mark
+    final_mark[offset : offset + mark.shape[0], offset : offset + mark.shape[1]] = mark
 
     return depthMap * (1 - final_mark)
 
@@ -94,12 +94,15 @@ def registerDepthMap(unregisteredDepthMap, rgbImage, depthK, rgbK, H_RGBFromDept
             xyzDepth[1] = ((v - depthCy) * depth) * invDepthFy
             xyzDepth[2] = depth
 
-            xyzRGB[0] = (H_RGBFromDepth[0, 0] * xyzDepth[0] + H_RGBFromDepth[0, 1] * xyzDepth[1] +
-                         H_RGBFromDepth[0, 2] * xyzDepth[2] + H_RGBFromDepth[0, 3])
-            xyzRGB[1] = (H_RGBFromDepth[1, 0] * xyzDepth[0] + H_RGBFromDepth[1, 1] * xyzDepth[1] +
-                         H_RGBFromDepth[1, 2] * xyzDepth[2] + H_RGBFromDepth[1, 3])
-            xyzRGB[2] = (H_RGBFromDepth[2, 0] * xyzDepth[0] + H_RGBFromDepth[2, 1] * xyzDepth[1] +
-                         H_RGBFromDepth[2, 2] * xyzDepth[2] + H_RGBFromDepth[2, 3])
+            xyzRGB[0] = (
+                H_RGBFromDepth[0, 0] * xyzDepth[0] + H_RGBFromDepth[0, 1] * xyzDepth[1] + H_RGBFromDepth[0, 2] * xyzDepth[2] + H_RGBFromDepth[0, 3]
+            )
+            xyzRGB[1] = (
+                H_RGBFromDepth[1, 0] * xyzDepth[0] + H_RGBFromDepth[1, 1] * xyzDepth[1] + H_RGBFromDepth[1, 2] * xyzDepth[2] + H_RGBFromDepth[1, 3]
+            )
+            xyzRGB[2] = (
+                H_RGBFromDepth[2, 0] * xyzDepth[0] + H_RGBFromDepth[2, 1] * xyzDepth[1] + H_RGBFromDepth[2, 2] * xyzDepth[2] + H_RGBFromDepth[2, 3]
+            )
 
             invRGB_Z = 1.0 / xyzRGB[2]
             undistorted[0] = (rgbFx * xyzRGB[0]) * invRGB_Z + rgbCx
@@ -161,16 +164,16 @@ def registeredDepthMapToPointCloud(depthMap, rgbImage, rgbK, refFromRGB, objFrom
             z = depth
 
             # refFromRGB
-            x1 = (refFromRGB[0, 0] * x + refFromRGB[0, 1] * y + refFromRGB[0, 2] * z + refFromRGB[0, 3])
-            y1 = (refFromRGB[1, 0] * x + refFromRGB[1, 1] * y + refFromRGB[1, 2] * z + refFromRGB[1, 3])
-            z1 = (refFromRGB[2, 0] * x + refFromRGB[2, 1] * y + refFromRGB[2, 2] * z + refFromRGB[2, 3])
+            x1 = refFromRGB[0, 0] * x + refFromRGB[0, 1] * y + refFromRGB[0, 2] * z + refFromRGB[0, 3]
+            y1 = refFromRGB[1, 0] * x + refFromRGB[1, 1] * y + refFromRGB[1, 2] * z + refFromRGB[1, 3]
+            z1 = refFromRGB[2, 0] * x + refFromRGB[2, 1] * y + refFromRGB[2, 2] * z + refFromRGB[2, 3]
 
             x, y, z = x1, y1, z1
 
             # obj from ref
-            cloud[row, col, 0] = (objFromref[0, 0] * x + objFromref[0, 1] * y + objFromref[0, 2] * z + objFromref[0, 3])
-            cloud[row, col, 1] = (objFromref[1, 0] * x + objFromref[1, 1] * y + objFromref[1, 2] * z + objFromref[1, 3])
-            cloud[row, col, 2] = (objFromref[2, 0] * x + objFromref[2, 1] * y + objFromref[2, 2] * z + objFromref[2, 3])
+            cloud[row, col, 0] = objFromref[0, 0] * x + objFromref[0, 1] * y + objFromref[0, 2] * z + objFromref[0, 3]
+            cloud[row, col, 1] = objFromref[1, 0] * x + objFromref[1, 1] * y + objFromref[1, 2] * z + objFromref[1, 3]
+            cloud[row, col, 2] = objFromref[2, 0] * x + objFromref[2, 1] * y + objFromref[2, 2] * z + objFromref[2, 3]
 
             cloud[row, col, 3] = rgbImage[v, u, 0]
             cloud[row, col, 4] = rgbImage[v, u, 1]
@@ -203,18 +206,21 @@ def writePLY(filename, cloud, faces=None):
         "property float z",
     ]
     if color:
-        header_lines.extend([
-            "property uchar diffuse_red",
-            "property uchar diffuse_green",
-            "property uchar diffuse_blue",
-        ])
+        header_lines.extend(
+            [
+                "property uchar diffuse_red",
+                "property uchar diffuse_green",
+                "property uchar diffuse_blue",
+            ]
+        )
     if faces is not None:
-        header_lines.extend([
-            "element face %d" % len(faces),
-            "property list uchar int vertex_indices"
-        ])
+        header_lines.extend(["element face %d" % len(faces), "property list uchar int vertex_indices"])
 
-    header_lines.extend(["end_header",])
+    header_lines.extend(
+        [
+            "end_header",
+        ]
+    )
 
     f = open(filename, "w+")
     f.write("\n".join(header_lines))
@@ -278,22 +284,15 @@ def writePCD(filename, pointCloud, ascii_type=True):
             if pointCloud.shape[2] == 6:
                 # These are written as bgr because rgb is interpreted as a single
                 # little-endian float.
-                dt = np.dtype([("x", np.float32),
-                               ("y", np.float32),
-                               ("z", np.float32),
-                               ("b", np.uint8),
-                               ("g", np.uint8),
-                               ("r", np.uint8),
-                               ("I", np.uint8)])
+                dt = np.dtype(
+                    [("x", np.float32), ("y", np.float32), ("z", np.float32), ("b", np.uint8), ("g", np.uint8), ("r", np.uint8), ("I", np.uint8)]
+                )
                 pointCloud_tmp = np.zeros((height * width, 1), dtype=dt)
                 for i, k in enumerate(["x", "y", "z", "r", "g", "b"]):
                     pointCloud_tmp[k] = pointCloud[:, :, i].reshape((height * width, 1))
                 pointCloud_tmp.tofile(f)
             else:
-                dt = np.dtype([("x", np.float32),
-                               ("y", np.float32),
-                               ("z", np.float32),
-                               ("I", np.uint8)])
+                dt = np.dtype([("x", np.float32), ("y", np.float32), ("z", np.float32), ("I", np.uint8)])
                 pointCloud_tmp = np.zeros((height * width, 1), dtype=dt)
                 for i, k in enumerate(["x", "y", "z"]):
                     pointCloud_tmp[k] = pointCloud[:, :, i].reshape((height * width, 1))
@@ -323,12 +322,15 @@ def generate(path):
 
     referenceCamera = "NP5"  # can only be NP5
 
-    ply_fname = os.path.join(ycb_data_folder, target_object, "rgbd", "clouds",
-                             "pc_" + viewpoint_camera + "_" + referenceCamera + "_" + viewpoint_angle + ".ply")
-    pcd_fname = os.path.join(ycb_data_folder, target_object, "rgbd", "clouds",
-                             "pc_" + viewpoint_camera + "_" + referenceCamera + "_" + viewpoint_angle + ".pcd")
-    npy_fname = os.path.join(ycb_data_folder, target_object, "rgbd", "clouds",
-                             "pc_" + viewpoint_camera + "_" + referenceCamera + "_" + viewpoint_angle + ".npy")
+    ply_fname = os.path.join(
+        ycb_data_folder, target_object, "rgbd", "clouds", "pc_" + viewpoint_camera + "_" + referenceCamera + "_" + viewpoint_angle + ".ply"
+    )
+    pcd_fname = os.path.join(
+        ycb_data_folder, target_object, "rgbd", "clouds", "pc_" + viewpoint_camera + "_" + referenceCamera + "_" + viewpoint_angle + ".pcd"
+    )
+    npy_fname = os.path.join(
+        ycb_data_folder, target_object, "rgbd", "clouds", "pc_" + viewpoint_camera + "_" + referenceCamera + "_" + viewpoint_angle + ".npy"
+    )
 
     if os.path.exists(ply_fname) and os.path.exists(pcd_fname) and os.path.exists(npy_fname):
         print(ycb_data_folder, target_object, viewpoint_camera, viewpoint_angle, "pass")
@@ -345,8 +347,7 @@ def generate(path):
     pbmFilename = os.path.join(ycb_data_folder, target_object, "rgbd", "masks", basename + "_mask.pbm")
 
     calibrationFilename = os.path.join(ycb_data_folder, target_object, "rgbd", "calibration.h5")
-    objFromrefFilename = os.path.join(ycb_data_folder, target_object, "rgbd", "poses",
-                                      "{0}_{1}_pose.h5".format(referenceCamera, viewpoint_angle))
+    objFromrefFilename = os.path.join(ycb_data_folder, target_object, "rgbd", "poses", "{0}_{1}_pose.h5".format(referenceCamera, viewpoint_angle))
     calibration = h5.File(calibrationFilename, "r")
     try:
         depthK = calibration[f"{viewpoint_camera}_depth_K"][:]  # use depth instead of ir
@@ -357,7 +358,7 @@ def generate(path):
     rgbImage = imread(rgbFilename)
     pbmImage = imread(pbmFilename)[:, :, 0]
     rgbK = calibration[f"{viewpoint_camera}_rgb_K"][:]
-    depthScale = np.array(calibration[f"{viewpoint_camera}_ir_depth_scale"]) * .0001  # 100um to meters
+    depthScale = np.array(calibration[f"{viewpoint_camera}_ir_depth_scale"]) * 0.0001  # 100um to meters
     H_RGBFromDepth, refFromRGB = getRGBFromDepthTransform(calibration, viewpoint_camera, referenceCamera)
 
     unregisteredDepthMap = h5.File(depthFilename, "r")["depth"][:]
@@ -379,6 +380,7 @@ def main():
     cores = mp.cpu_count()
     pool = mp.Pool(processes=cores)
     pool.map(generate, fl)
+    print("Done.")
 
 
 if __name__ == "__main__":

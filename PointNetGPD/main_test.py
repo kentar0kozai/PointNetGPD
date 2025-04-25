@@ -1,99 +1,103 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import argparse
 import time
+
 import torch
-import torch.utils.data
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
-from scipy.stats import mode
-import sys
-from os import path
+from model.pointnet import PointNetSkipAtCls
 
-sys.path.append(path.dirname(path.dirname(path.abspath("__file__"))))
 parser = argparse.ArgumentParser(description="pointnetGPD")
-parser.add_argument("--cuda", action="store_true", default=False)
+parser.add_argument("--cuda", action="store_true", default=True)
 parser.add_argument("--gpu", type=int, default=0)
-parser.add_argument("--load-model", type=str,
-                    default="../data/pointnetgpd_3class.model")
-parser.add_argument("--show_final_grasp", action="store_true", default=False)
-parser.add_argument("--tray_grasp", action="store_true", default=False)
-parser.add_argument("--using_mp", action="store_true", default=False)
-parser.add_argument("--model_type", type=str)
-
+parser.add_argument("--load-model", type=str, default="./assets/learned_models/PointNet_SkipAt/PointNet_SkipAt_200.model")
+parser.add_argument("--model-points", type=int, default=750)
+parser.add_argument("--n-repeat", type=int, default=10)
 args = parser.parse_args()
 
-args.cuda = args.cuda if torch.cuda.is_available else False
-
+# GPU設定
+args.cuda = args.cuda if torch.cuda.is_available() else False
+device = torch.device(f"cuda:{args.gpu}" if args.cuda else "cpu")
 if args.cuda:
     torch.cuda.manual_seed(1)
-
 np.random.seed(int(time.time()))
 
-if args.model_type == "100":
-    args.load_model = "../data/pointgpd_chann3_local.model"
-elif args.model_type == "50":
-    args.load_model = "../data/pointgpd_50_points.model"
-elif args.model_type == "3class":  # input points number is 500
-    args.load_model = "../data/pointnetgpd_3class.model"
-else:
-    print("Using default model file")
-model = torch.load(args.load_model, map_location="cpu")
-model.device_ids = [args.gpu]
-print("load model {}".format(args.load_model))
+# モデル読み込み
+checkpoint = torch.load(args.load_model, map_location="cpu", weights_only=False)
+model = checkpoint.module if hasattr(checkpoint, "module") else checkpoint
+model.eval()
+model.to(device)
+print(f"✅ モデルをロードしました: {args.load_model}")
 
-if args.cuda:
-    model = torch.load(args.load_model, map_location="cuda:{}".format(args.gpu))
-    if args.gpu != -1:
-        torch.cuda.set_device(args.gpu)
-        model = model.cuda()
+# ── ここから生の test.npy 前処理付き推論 ──
+# 1. 点群をロード
+pc_raw = np.load("test.npy")  # shape=(M,3)
+M = pc_raw.shape[0]
+print(f"Loaded raw point cloud with {M} points")
+
+
+# 2. Dataset相当の前処理関数を定義
+def preprocess_point_cloud(pc, num_points):
+    # ① ランダムサンプリング or リプレイスあり抽出
+    if pc.shape[0] >= num_points:
+        idxs = np.random.choice(pc.shape[0], num_points, replace=False)
     else:
-        device_id = [0, 1]
-        torch.cuda.set_device(device_id[0])
-        model = nn.DataParallel(model, device_ids=device_id).cuda()
-if isinstance(model, torch.nn.DataParallel):
-    model = model.module
+        idxs = np.random.choice(pc.shape[0], num_points, replace=True)
+    pc_sampled = pc[idxs, :]  # (num_points, 3)
+
+    # ② 重心を引いてセンタリング
+    centroid = np.mean(pc_sampled, axis=0)
+    pc_centered = pc_sampled - centroid  # (num_points, 3)
+
+    # ③ 最大距離でスケーリング（半径を1に正規化）
+    furthest_dist = np.max(np.linalg.norm(pc_centered, axis=1))
+    if furthest_dist > 0:
+        pc_normalized = pc_centered / furthest_dist
+    else:
+        pc_normalized = pc_centered
+
+    # ④ 転置して (3, num_points) に
+    return pc_normalized.T.astype(np.float32)
 
 
-def test_network(model_, local_pc):
-    local_pc = local_pc.T
-    local_pc = local_pc[np.newaxis, ...]
-    local_pc = torch.FloatTensor(local_pc)
-    if args.cuda:
-        local_pc = local_pc.cuda()
-    output, _ = model_(local_pc)  # N*C
-    output = output.softmax(1)
-    pred = output.data.max(1, keepdim=True)[1]
-    output = output.cpu()
-    return pred[0], output.data.numpy()
+# 3. 複数回繰り返して投げる場合の処理ループ
+all_logits = []
+all_probs = []
+all_preds = []
 
+for _ in range(args.n_repeat):
+    # 前処理してテンソル化
+    pc_proc = preprocess_point_cloud(pc_raw, args.model_points)  # (3,750)
+    pc_tensor = torch.from_numpy(pc_proc).unsqueeze(0).to(device)  # (1,3,750)
 
-def main():
-    repeat = 10
-    num_point = 500
-    model.eval()
-    torch.set_grad_enabled(False)
+    # 推論
+    with torch.no_grad():
+        logits, _ = model(pc_tensor)  # (1,2)
+        probs = F.softmax(logits, dim=-1)  # (1,2)
 
-    # load pc(should be in local gripper coordinate)
-    # local_pc: (N, 3)
-    # local_pc = np.load("test.npy")
-    local_pc = np.random.random([500, 3])  # test only
-    predict = []
-    for _ in range(repeat):
-        if len(local_pc) >= num_point:
-            local_pc = local_pc[np.random.choice(len(local_pc), num_point, replace=False)]
-        else:
-            local_pc = local_pc[np.random.choice(len(local_pc), num_point, replace=True)]
+    # CPUへ戻して numpy に
+    logits_np = logits.cpu().numpy()[0]  # shape=(2,)
+    probs_np = probs.cpu().numpy()[0]  # shape=(2,)
+    pred = int(probs_np.argmax())  # 予測ラベル
 
-        # run model
-        predict.append(test_network(model, local_pc)[0])
-    print("voting: ", predict)
-    predict = mode(predict).mode[0]
+    all_logits.append(logits_np)
+    all_probs.append(probs_np)
+    all_preds.append(pred)
 
-    # output
-    print("Test result:", predict)
+# 4. 結果をまとめて表示
+all_logits = np.stack(all_logits, axis=0)  # (n_repeat,2)
+all_probs = np.stack(all_probs, axis=0)  # (n_repeat,2)
+all_preds = np.array(all_preds)  # (n_repeat,)
 
+# 平均logits, 平均確率, 最頻値（voting）
+mean_logits = all_logits.mean(axis=0)
+mean_probs = all_probs.mean(axis=0)
+from scipy.stats import mode
 
-if __name__ == "__main__":
-    main()
+vote_label = int(mode(all_preds).mode.item())
+
+print("🔍 raw logits（repeat平均）:", mean_logits)
+print("✨ softmax probabilities（repeat平均）:", mean_probs)
+print("🏷️ voting予測ラベル:", vote_label)

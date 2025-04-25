@@ -45,8 +45,7 @@ class BaseGraspDataset(torch.utils.data.Dataset):
         center = (np.dot(transform, np.array([center[0], center[1], center[2], 1])))[:3]
         binormal = (np.dot(transform, np.array([binormal[0], binormal[1], binormal[2], 0])))[:3].reshape(3, 1)
         approach = (np.dot(transform, np.array([approach[0], approach[1], approach[2], 0])))[:3].reshape(3, 1)
-        minor_normal = (np.dot(transform, np.array([minor_normal[0], minor_normal[1], minor_normal[2], 0])))[
-                       :3].reshape(3, 1)
+        minor_normal = (np.dot(transform, np.array([minor_normal[0], minor_normal[1], minor_normal[2], 0])))[:3].reshape(3, 1)
         matrix = np.hstack([approach, binormal, minor_normal]).T
         # pc_t/left_t/right_t is in local coordinate(with center as origin)
         # other(include pc) are in pc coordinate
@@ -93,26 +92,23 @@ class BaseGraspDataset(torch.utils.data.Dataset):
         surface_normal = self.get_normal(pc)
         grasp_pc = pc[self.in_ind]
         grasp_pc_norm = surface_normal[self.in_ind]
-        bad_check = (grasp_pc_norm != grasp_pc_norm)
+        bad_check = grasp_pc_norm != grasp_pc_norm
         if np.sum(bad_check) != 0:
             bad_ind = np.where(bad_check == True)
             grasp_pc = np.delete(grasp_pc, bad_ind[0], axis=0)
             grasp_pc_norm = np.delete(grasp_pc_norm, bad_ind[0], axis=0)
-        assert (np.sum(grasp_pc_norm != grasp_pc_norm) == 0)
+        assert np.sum(grasp_pc_norm != grasp_pc_norm) == 0
         m_width_of_pic = self.project_size
         margin = self.projection_margin
         order = np.array([0, 1, 2])
-        occupy_pic1, norm_pic1 = self.cal_projection(grasp_pc, m_width_of_pic, margin, grasp_pc_norm,
-                                                     order, gripper_width)
+        occupy_pic1, norm_pic1 = self.cal_projection(grasp_pc, m_width_of_pic, margin, grasp_pc_norm, order, gripper_width)
         if self.project_chann == 3:
             output = norm_pic1
         elif self.project_chann == 12:
             order = np.array([1, 2, 0])
-            occupy_pic2, norm_pic2 = self.cal_projection(grasp_pc, m_width_of_pic, margin, grasp_pc_norm,
-                                                         order, gripper_width)
+            occupy_pic2, norm_pic2 = self.cal_projection(grasp_pc, m_width_of_pic, margin, grasp_pc_norm, order, gripper_width)
             order = np.array([0, 2, 1])
-            occupy_pic3, norm_pic3 = self.cal_projection(grasp_pc, m_width_of_pic, margin, grasp_pc_norm,
-                                                         order, gripper_width)
+            occupy_pic3, norm_pic3 = self.cal_projection(grasp_pc, m_width_of_pic, margin, grasp_pc_norm, order, gripper_width)
             output = np.dstack([occupy_pic1, norm_pic1, occupy_pic2, norm_pic2, occupy_pic3, norm_pic3])
         else:
             raise NotImplementedError
@@ -120,8 +116,7 @@ class BaseGraspDataset(torch.utils.data.Dataset):
         return output
 
     def check_square(self, point, points_g):
-        dirs = np.array([[-1, 1, 1], [1, 1, 1], [-1, -1, 1], [1, -1, 1],
-                         [-1, 1, -1], [1, 1, -1], [-1, -1, -1], [1, -1, -1]])
+        dirs = np.array([[-1, 1, 1], [1, 1, 1], [-1, -1, 1], [1, -1, 1], [-1, 1, -1], [1, 1, -1], [-1, -1, -1], [1, -1, -1]])
         p = dirs * 0.5 + point  # here res * 0.5 means get half of a pixel width
         a1 = p[2][1] < points_g[:, 1]
         a2 = p[0][1] > points_g[:, 1]
@@ -152,16 +147,18 @@ class BaseGraspDataset(torch.utils.data.Dataset):
 
         tmp = max((max_x - min_x), (max_y - min_y))
         if tmp == 0:
-            print("WARNING : the num of input points seems only have one, no possilbe to do learning on"
-                  "such data, please throw it away.  -- Hongzhuo")
+            print(
+                "WARNING : the num of input points seems only have one, no possilbe to do learning on"
+                "such data, please throw it away.  -- Hongzhuo"
+            )
             return occupy_pic, norm_pic
         # Here, we use the gripper width to cal the res:
         res = gripper_width / (m_width_of_pic - margin)
 
         voxel_points_square_norm = []
-        x_coord_r = ((point_cloud_voxel[:, order[0]]) / res + m_width_of_pic / 2)
-        y_coord_r = ((point_cloud_voxel[:, order[1]]) / res + m_width_of_pic / 2)
-        z_coord_r = ((point_cloud_voxel[:, order[2]]) / res + m_width_of_pic / 2)
+        x_coord_r = (point_cloud_voxel[:, order[0]]) / res + m_width_of_pic / 2
+        y_coord_r = (point_cloud_voxel[:, order[1]]) / res + m_width_of_pic / 2
+        z_coord_r = (point_cloud_voxel[:, order[2]]) / res + m_width_of_pic / 2
         x_coord_r = np.floor(x_coord_r).astype(int)
         y_coord_r = np.floor(y_coord_r).astype(int)
         z_coord_r = np.floor(z_coord_r).astype(int)
@@ -193,14 +190,26 @@ class BaseGraspDataset(torch.utils.data.Dataset):
         norm_pic[x_coord_square, y_coord_square, :] = voxel_points_square_norm
         occupy_pic[x_coord_square, y_coord_square] = number_buffer[:, np.newaxis]
         occupy_max = occupy_pic.max()
-        assert (occupy_max > 0)
+        assert occupy_max > 0
         occupy_pic = occupy_pic / occupy_max
         return occupy_pic, norm_pic
 
 
 class PointGraspDataset(BaseGraspDataset):
-    def __init__(self, obj_points_num, grasp_points_num, pc_file_used_num, grasp_amount_per_file, thresh_good,
-                 thresh_bad, tag, with_obj=False, projection=False, project_chann=3, project_size=60):
+    def __init__(
+        self,
+        obj_points_num,
+        grasp_points_num,
+        pc_file_used_num,
+        grasp_amount_per_file,
+        thresh_good,
+        thresh_bad,
+        tag,
+        with_obj=False,
+        projection=False,
+        project_chann=3,
+        project_size=60,
+    ):
         super().__init__()
         self.obj_points_num = obj_points_num
         self.grasp_points_num = grasp_points_num
@@ -227,14 +236,14 @@ class PointGraspDataset(BaseGraspDataset):
         fl_pc = glob.glob(f"{self.pointnetgpd_dir}/data/ycb-tools/models/ycb/*/rgbd/clouds/*.npy")
         self.d_pc, self.d_grasp = {}, {}
         for i in fl_pc:
-            k = i.split('/')[-4]
+            k = i.split("/")[-4]
             if k in self.d_pc.keys():
                 self.d_pc[k].append(i)
             else:
                 self.d_pc[k] = [i]
 
         for i in fl_grasp:
-            k = i.split('/')[-1].split('.')[0]
+            k = i.split("/")[-1].split(".")[0]
             self.d_grasp[k] = i
         object1 = set(self.d_grasp.keys())
         object2 = set(self.transform.keys())
@@ -261,11 +270,9 @@ class PointGraspDataset(BaseGraspDataset):
 
         if not self.projection:
             if len(grasp_pc) > self.grasp_points_num:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=False)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=False)].T
             else:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=True)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=True)].T
         else:
             grasp_pc = grasp_pc.transpose((2, 1, 0))
         score = level_score + refine_score * 0.01
@@ -286,8 +293,20 @@ class PointGraspDataset(BaseGraspDataset):
 
 
 class PointGraspMultiClassDataset(BaseGraspDataset):
-    def __init__(self, obj_points_num, grasp_points_num, pc_file_used_num, grasp_amount_per_file, thresh_good,
-                 thresh_bad, tag, with_obj=False, projection=False, project_chann=3, project_size=60):
+    def __init__(
+        self,
+        obj_points_num,
+        grasp_points_num,
+        pc_file_used_num,
+        grasp_amount_per_file,
+        thresh_good,
+        thresh_bad,
+        tag,
+        with_obj=False,
+        projection=False,
+        project_chann=3,
+        project_size=60,
+    ):
         super().__init__()
         self.obj_points_num = obj_points_num
         self.grasp_points_num = grasp_points_num
@@ -314,14 +333,14 @@ class PointGraspMultiClassDataset(BaseGraspDataset):
         fl_pc = glob.glob(f"{self.pointnetgpd_dir}/data/ycb-tools/models/ycb/*/rgbd/clouds/*.npy")
         self.d_pc, self.d_grasp = {}, {}
         for i in fl_pc:
-            k = i.split('/')[-4]
+            k = i.split("/")[-4]
             if k in self.d_pc.keys():
                 self.d_pc[k].append(i)
             else:
                 self.d_pc[k] = [i]
 
         for i in fl_grasp:
-            k = i.split('/')[-1].split('.')[0]
+            k = i.split("/")[-1].split(".")[0]
             self.d_grasp[k] = i
         object1 = set(self.d_grasp.keys())
         object2 = set(self.transform.keys())
@@ -348,11 +367,9 @@ class PointGraspMultiClassDataset(BaseGraspDataset):
 
         if not self.projection:
             if len(grasp_pc) > self.grasp_points_num:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=False)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=False)].T
             else:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=True)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=True)].T
         else:
             grasp_pc = grasp_pc.transpose((2, 1, 0))
         score = level_score + refine_score * 0.01
@@ -373,8 +390,18 @@ class PointGraspMultiClassDataset(BaseGraspDataset):
 
 
 class PointGraspOneViewDataset(BaseGraspDataset):
-    def __init__(self, grasp_points_num, grasp_amount_per_file, thresh_good,
-                 thresh_bad, tag, with_obj=False, projection=False, project_chann=3, project_size=60):
+    def __init__(
+        self,
+        grasp_points_num,
+        grasp_amount_per_file,
+        thresh_good,
+        thresh_bad,
+        tag,
+        with_obj=False,
+        projection=False,
+        project_chann=3,
+        project_size=60,
+    ):
         super().__init__()
         self.grasp_points_num = grasp_points_num
         self.grasp_amount_per_file = grasp_amount_per_file
@@ -400,7 +427,7 @@ class PointGraspOneViewDataset(BaseGraspDataset):
         fl_pc = glob.glob(f"{self.pointnetgpd_dir}/data/ycb-tools/models/ycb/*/rgbd/clouds/pc_NP3_NP5*.npy")
         self.d_pc, self.d_grasp = {}, {}
         for i in fl_pc:
-            k = i.split('/')[-4]
+            k = i.split("/")[-4]
             if k in self.d_pc.keys():
                 self.d_pc[k].append(i)
             else:
@@ -409,13 +436,12 @@ class PointGraspOneViewDataset(BaseGraspDataset):
             self.d_pc[k].sort()
 
         for i in fl_grasp:
-            k = i.split('/')[-1].split('.')[0]
+            k = i.split("/")[-1].split(".")[0]
             self.d_grasp[k] = i
         object1 = set(self.d_grasp.keys())
         object2 = set(self.transform.keys())
         self.object = list(object1.intersection(object2))
         self.amount = len(self.object) * self.grasp_amount_per_file
-
 
     def __getitem__(self, index):
         obj_ind, grasp_ind = np.unravel_index(index, (len(self.object), self.grasp_amount_per_file))
@@ -437,11 +463,9 @@ class PointGraspOneViewDataset(BaseGraspDataset):
 
         if not self.projection:
             if len(grasp_pc) > self.grasp_points_num:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=False)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=False)].T
             else:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=True)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=True)].T
         else:
             grasp_pc = grasp_pc.transpose((2, 1, 0))
         score = level_score + refine_score * 0.01
@@ -462,8 +486,18 @@ class PointGraspOneViewDataset(BaseGraspDataset):
 
 
 class PointGraspOneViewMultiClassDataset(BaseGraspDataset):
-    def __init__(self, grasp_points_num, grasp_amount_per_file, thresh_good,
-                 thresh_bad, tag, with_obj=False, projection=False, project_chann=3, project_size=60):
+    def __init__(
+        self,
+        grasp_points_num,
+        grasp_amount_per_file,
+        thresh_good,
+        thresh_bad,
+        tag,
+        with_obj=False,
+        projection=False,
+        project_chann=3,
+        project_size=60,
+    ):
         super().__init__()
         self.grasp_points_num = grasp_points_num
         self.grasp_amount_per_file = grasp_amount_per_file
@@ -489,7 +523,7 @@ class PointGraspOneViewMultiClassDataset(BaseGraspDataset):
         fl_pc = glob.glob(f"{self.pointnetgpd_dir}/data/ycb-tools/models/ycb/*/rgbd/clouds/pc_NP3_NP5*.npy")
         self.d_pc, self.d_grasp = {}, {}
         for i in fl_pc:
-            k = i.split('/')[-4]
+            k = i.split("/")[-4]
             if k in self.d_pc.keys():
                 self.d_pc[k].append(i)
             else:
@@ -498,7 +532,7 @@ class PointGraspOneViewMultiClassDataset(BaseGraspDataset):
             self.d_pc[k].sort()
 
         for i in fl_grasp:
-            k = i.split('/')[-1].split('.')[0]
+            k = i.split("/")[-1].split(".")[0]
             self.d_grasp[k] = i
         object1 = set(self.d_grasp.keys())
         object2 = set(self.transform.keys())
@@ -525,11 +559,9 @@ class PointGraspOneViewMultiClassDataset(BaseGraspDataset):
 
         if not self.projection:
             if len(grasp_pc) > self.grasp_points_num:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=False)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=False)].T
             else:
-                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num,
-                                                     replace=True)].T
+                grasp_pc = grasp_pc[np.random.choice(len(grasp_pc), size=self.grasp_points_num, replace=True)].T
         else:
             grasp_pc = grasp_pc.transpose((2, 1, 0))
         score = level_score + refine_score * 0.01
@@ -562,7 +594,7 @@ def test_dataset():
         obj_points_num=obj_points_num,
         grasp_points_num=grasp_points_num,
         pc_file_used_num=pc_file_used_num,
-        tag='train',
+        tag="train",
         grasp_amount_per_file=6500,
         thresh_good=thresh_good,
         thresh_bad=thresh_bad,
